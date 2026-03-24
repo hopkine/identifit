@@ -8,7 +8,7 @@ import {
   ScrollView,
   Alert,
   RefreshControl,
-  Dimensions,
+  Image,
 } from 'react-native';
 import { Plus, Users, Sparkles } from 'lucide-react-native';
 import { useFonts, Caladea_400Regular, Caladea_700Bold } from '@expo-google-fonts/caladea';
@@ -17,8 +17,7 @@ import { mockFriends } from '@/data/social';
 import { useOOTD } from '@/hooks/useOOTD';
 import { currentUser } from '@/data/ootd';
 import OOTDCard from '@/components/OOTDCard';
-
-const { width } = Dimensions.get('window');
+import { LAYOUT, constrainedWidth } from '@/constants/layout';
 
 export default function SocialScreen() {
   const [refreshing, setRefreshing] = useState(false);
@@ -114,6 +113,7 @@ export default function SocialScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.innerWrapper}>
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
@@ -205,6 +205,7 @@ export default function SocialScreen() {
           </View>
         )}
       </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -212,13 +213,19 @@ export default function SocialScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1C1C1E',
+    backgroundColor: LAYOUT.backgroundColor,
+    alignItems: 'center',
+  },
+  innerWrapper: {
+    flex: 1,
+    width: '100%',
+    maxWidth: constrainedWidth,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
     paddingTop: 16,
     paddingBottom: 16,
   },
@@ -264,7 +271,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
   },
   onlineSection: {
     marginBottom: 20,

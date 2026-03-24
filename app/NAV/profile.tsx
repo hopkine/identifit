@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
-  Dimensions,
 } from 'react-native';
 import {
   ChartBar as BarChart3,
@@ -19,8 +18,7 @@ import {
 import { useOOTD } from '@/hooks/useOOTD';
 import { currentUser } from '@/data/ootd';
 import OOTDCard from '@/components/OOTDCard';
-
-const { width } = Dimensions.get('window');
+import { LAYOUT, constrainedWidth } from '@/constants/layout';
 
 export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<'posts' | 'saved'>('posts');
@@ -28,6 +26,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.innerWrapper}>
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -151,6 +150,7 @@ export default function ProfileScreen() {
           )}
         </View>
       </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -158,7 +158,13 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: LAYOUT.backgroundColor,
+    alignItems: 'center',
+  },
+  innerWrapper: {
+    flex: 1,
+    width: '100%',
+    maxWidth: constrainedWidth,
   },
   scrollView: {
     flex: 1,
@@ -167,7 +173,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
     paddingTop: 16,
     paddingBottom: 16,
     gap: 23,
@@ -239,7 +245,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderBottomColor: '#4B5563',
-    paddingHorizontal: 24,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
   },
   tab: {
     flex: 1,
@@ -275,7 +281,7 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
-    paddingHorizontal: 16,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
     paddingTop: 16,
   },
   ootdsGrid: {

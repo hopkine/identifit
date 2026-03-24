@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   SafeAreaView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -14,8 +13,7 @@ import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 import { useOOTD } from '@/hooks/useOOTD';
 import { currentUser } from '@/data/ootd';
-
-const { width, height } = Dimensions.get('window');
+import { LAYOUT, constrainedWidth, SCREEN_HEIGHT } from '@/constants/layout';
 
 export default function OnboardingScreen() {
   const router = useRouter();
@@ -47,6 +45,7 @@ export default function OnboardingScreen() {
     
   return (
     <SafeAreaView style={styles.container}>
+      <View style={[styles.innerContainer, { width: constrainedWidth, minHeight: SCREEN_HEIGHT }]}>
       <View style={styles.content}>
         <View style={styles.textContainer}>
           <Text style={styles.greeting}>Hi {currentUser.name.split(' ')[0]},{"\n"}let's get your identifit set up.</Text>
@@ -73,6 +72,7 @@ export default function OnboardingScreen() {
           </TouchableOpacity>
         </View>
       </View>
+      </View>
     </SafeAreaView>
   );
 }
@@ -80,12 +80,16 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: LAYOUT.backgroundColor,
+    alignItems: 'center',
+  },
+  innerContainer: {
+    flex: 1,
   },
   content: {
     flex: 1,
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
     paddingVertical: 60,
   },
   textContainer: {

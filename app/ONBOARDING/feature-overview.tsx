@@ -5,7 +5,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
-  Dimensions,
   Animated,
 } from 'react-native';
 import { ArrowRight } from 'lucide-react-native';
@@ -16,7 +15,7 @@ import {
   Caladea_700Bold,
 } from '@expo-google-fonts/caladea';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+import { LAYOUT, constrainedWidth, SCREEN_HEIGHT } from '@/constants/layout';
 
 const SLIDE_TRANSITION_DURATION = 280;
 const GALLERY_TRANSITION_DURATION = 400;
@@ -226,19 +225,19 @@ export default function FeatureOverview() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: LAYOUT.backgroundColor,
     justifyContent: 'center',
     alignItems: 'center',
   },
   innerContainer: {
-    width: Math.min(393, SCREEN_WIDTH),
+    width: constrainedWidth,
     height: SCREEN_HEIGHT,
     position: 'relative',
   },
   skipButton: {
     position: 'absolute',
     top: 60,
-    right: 29,
+    right: LAYOUT.paddingHorizontal,
     zIndex: 10,
   },
   skipText: {
@@ -290,8 +289,8 @@ const styles = StyleSheet.create({
   contentContainer: {
     position: 'absolute',
     bottom: 60,
-    left: 29,
-    right: 29,
+    left: LAYOUT.paddingHorizontal,
+    right: LAYOUT.paddingHorizontal,
   },
   textContent: {
     marginBottom: 60,

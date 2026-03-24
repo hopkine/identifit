@@ -29,6 +29,7 @@ import * as Haptics from 'expo-haptics';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useOOTD } from '@/hooks/useOOTD';
 import { currentUser } from '@/data/ootd';
+import { LAYOUT, constrainedWidth } from '@/constants/layout';
 
 export default function HomeScreen() {
   const { saveOOTD, getOOTDForDate, getRecentOOTDs, userOOTDs, deleteOOTD, getTopStyles } =
@@ -390,6 +391,7 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
+      <View style={styles.innerWrapper}>
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
@@ -547,6 +549,7 @@ export default function HomeScreen() {
           <Text style={styles.logoTagline}>Your style, identified</Text>
         </Animated.View>
       </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -554,7 +557,13 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: LAYOUT.backgroundColor,
+    alignItems: 'center',
+  },
+  innerWrapper: {
+    flex: 1,
+    width: '100%',
+    maxWidth: constrainedWidth,
   },
   scrollView: {
     flex: 1,
@@ -565,7 +574,7 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 30,
-    paddingHorizontal: 20,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
   },
   greeting: {
     fontSize: 14,
@@ -580,7 +589,7 @@ const styles = StyleSheet.create({
   },
   statsContainer: {
     marginBottom: 20,
-    paddingHorizontal: 20,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
   },
   statsRow: {
     flexDirection: 'row',
@@ -699,7 +708,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(63, 63, 63, 0.25)',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    padding: 20,
+    padding: LAYOUT.paddingHorizontal,
     marginTop: 20,
     borderColor: 'rgba(194, 194, 194, 0.4)',
     borderWidth: 1,
@@ -809,7 +818,7 @@ const styles = StyleSheet.create({
   logoTeaser: {
     alignItems: 'center',
     paddingVertical: 20,
-    paddingHorizontal: 20,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
     marginTop: 20,
   },
   logoImage: {

@@ -5,11 +5,9 @@ import {
   StyleSheet,
   Animated,
   Image,
-  Dimensions,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+import { LAYOUT, constrainedWidth, SCREEN_HEIGHT } from '@/constants/layout';
 
 export default function Welcome() {
   const router = useRouter();
@@ -193,11 +191,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   innerContainer: {
-    width: Math.min(393, SCREEN_WIDTH),
+    width: constrainedWidth,
     height: SCREEN_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
   },
   centerContent: {
     alignItems: 'center',

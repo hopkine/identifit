@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  Dimensions,
   Alert,
   Platform,
 } from 'react-native';
@@ -16,7 +15,7 @@ import {
   Caladea_700Bold,
 } from '@expo-google-fonts/caladea';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+import { LAYOUT, constrainedWidth, SCREEN_HEIGHT } from '@/constants/layout';
 
 export default function LocationScreen() {
   const router = useRouter();
@@ -96,19 +95,19 @@ export default function LocationScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: LAYOUT.backgroundColor,
     justifyContent: 'center',
     alignItems: 'center',
   },
   innerContainer: {
-    width: Math.min(393, SCREEN_WIDTH),
+    width: constrainedWidth,
     height: SCREEN_HEIGHT,
     position: 'relative',
   },
   skipButton: {
     position: 'absolute',
     top: 60,
-    right: 29,
+    right: LAYOUT.paddingHorizontal,
     zIndex: 10,
   },
   skipText: {
@@ -119,7 +118,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     justifyContent: 'space-between',
-    paddingHorizontal: 29,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
     paddingTop: 180,
     paddingBottom: 60,
   },

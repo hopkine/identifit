@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { House, Compass, Bookmark, Shirt, User, Users } from 'lucide-react-native';
+import { LAYOUT } from '@/constants/layout';
 
 export default function TabLayout() {
   return (
@@ -7,7 +8,7 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: '#1a1a1a',
+          backgroundColor: LAYOUT.backgroundColor,
           borderTopWidth: 0,
           height: 90,
           paddingBottom: 30,

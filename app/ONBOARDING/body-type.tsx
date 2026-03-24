@@ -22,6 +22,7 @@ import {
 } from '@expo-google-fonts/work-sans';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
+import { LAYOUT, constrainedWidth } from '@/constants/layout';
 
 interface BodyType {
   id: string;
@@ -104,6 +105,7 @@ export default function BodyTypeScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={[styles.innerContainer, { width: constrainedWidth }]}>
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -178,6 +180,7 @@ export default function BodyTypeScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+      </View>
     </SafeAreaView>
   );
 }
@@ -185,13 +188,18 @@ export default function BodyTypeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: LAYOUT.backgroundColor,
+    alignItems: 'center',
+  },
+  innerContainer: {
+    flex: 1,
+    width: '100%',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
     paddingBottom: 20,
   },
   backButton: {
@@ -207,7 +215,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
   },
   titleContainer: {
     marginBottom: 32,
@@ -270,7 +278,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   bottomContainer: {
-    paddingHorizontal: 24,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
     paddingTop: 20,
   },
   continueButton: {

@@ -23,6 +23,7 @@ import {
 } from '@expo-google-fonts/work-sans';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
+import { LAYOUT, constrainedWidth } from '@/constants/layout';
 
 const styleOptions = [
   'Y2K',
@@ -70,7 +71,7 @@ export default function PersonalStyleScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     console.log('Continue pressed with styles:', selectedStyles);
-    router.push('/ONBOARDING/occasion');
+    router.push('/NAV');
   };
 
   const toggleStyle = (style: string) => {
@@ -100,6 +101,7 @@ export default function PersonalStyleScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={[styles.innerContainer, { width: constrainedWidth }]}>
       <View style={styles.header}>
         <TouchableOpacity
           style={styles.backButton}
@@ -189,6 +191,7 @@ export default function PersonalStyleScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+      </View>
     </SafeAreaView>
   );
 }
@@ -196,13 +199,18 @@ export default function PersonalStyleScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: LAYOUT.backgroundColor,
+    alignItems: 'center',
+  },
+  innerContainer: {
+    flex: 1,
+    width: '100%',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
     paddingTop: 10,
     paddingBottom: 20,
   },
@@ -219,7 +227,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
   },
   titleContainer: {
     marginBottom: 32,
@@ -290,7 +298,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   bottomContainer: {
-    paddingHorizontal: 24,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
     paddingBottom: 34,
     paddingTop: 20,
   },

@@ -10,6 +10,7 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+import { LAYOUT, constrainedWidth } from '@/constants/layout';
 import { useRouter } from 'expo-router';
 import {
   useFonts,
@@ -66,9 +67,10 @@ export default function UsernameScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.outerWrapper}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
+        style={[styles.keyboardView, { maxWidth: constrainedWidth }]}
       >
         <View style={styles.content}>
           <View style={styles.inputSection}>
@@ -107,10 +109,11 @@ export default function UsernameScreen() {
           >
             <Text style={styles.continueButtonText}>
               {isLoading ? 'Saving...' : 'Continue'}
-            </Text>
-          </TouchableOpacity>
+          </Text>
+        </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      </View>
     </SafeAreaView>
   );
 }
@@ -118,7 +121,14 @@ export default function UsernameScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#2C2C2E',
+    backgroundColor: '#1a1a1a',
+    alignItems: 'center',
+  },
+  outerWrapper: {
+    flex: 1,
+    width: '100%',
+    maxWidth: constrainedWidth,
+    alignSelf: 'center',
   },
   keyboardView: {
     flex: 1,
@@ -126,7 +136,7 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
     paddingTop: 120,
     paddingBottom: 40,
   },

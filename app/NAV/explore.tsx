@@ -8,7 +8,6 @@ import {
   ScrollView,
   TextInput,
   Image,
-  Dimensions,
 } from 'react-native';
 import { Search, Sparkles, Settings } from 'lucide-react-native';
 import {
@@ -22,8 +21,7 @@ import {
   WorkSans_600SemiBold,
 } from '@expo-google-fonts/work-sans';
 import FilterSortSheet from '@/components/FilterSortSheet';
-
-const { width } = Dimensions.get('window');
+import { LAYOUT, constrainedWidth } from '@/constants/layout';
 
 // Outfit images from recs folder
 const outfitImages = [
@@ -92,6 +90,7 @@ export default function ExploreScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.innerWrapper}>
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Explore</Text>
@@ -176,6 +175,7 @@ export default function ExploreScreen() {
         onClose={() => setShowFilterSheet(false)}
         onApplyFilters={handleApplyFilters}
       />
+      </View>
     </SafeAreaView>
   );
 }
@@ -183,10 +183,16 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
+    backgroundColor: LAYOUT.backgroundColor,
+    alignItems: 'center',
+  },
+  innerWrapper: {
+    flex: 1,
+    width: '100%',
+    maxWidth: constrainedWidth,
   },
   header: {
-    paddingHorizontal: 24,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
     paddingTop: 20,
     paddingBottom: 16,
   },
@@ -197,7 +203,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
   },
   searchContainer: {
     marginBottom: 24,
@@ -284,7 +290,7 @@ const styles = StyleSheet.create({
   floatingButton: {
     position: 'absolute',
     bottom: 100,
-    right: 24,
+    right: LAYOUT.paddingHorizontal,
     width: 56,
     height: 56,
     borderRadius: 28,
