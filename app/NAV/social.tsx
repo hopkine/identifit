@@ -8,7 +8,6 @@ import {
   ScrollView,
   Alert,
   RefreshControl,
-  Image,
 } from 'react-native';
 import { Plus, Users, Sparkles } from 'lucide-react-native';
 import { useFonts, Caladea_400Regular, Caladea_700Bold } from '@expo-google-fonts/caladea';
@@ -124,11 +123,12 @@ export default function SocialScreen() {
           <Text style={styles.headerSubtitle}>Get inspired by your friends' style</Text>
         </View>
         
-        <TouchableOpacity style={styles.addButton} onPress={handleAddOutfit}>
-          <Image 
-            source={require('@/assets/images/Group 32 (1).png')} 
-            style={styles.addButtonImage}
-          />
+        <TouchableOpacity
+          style={styles.addButton}
+          onPress={handleAddOutfit}
+          activeOpacity={0.85}
+        >
+          <Plus size={22} color="#1a1a1a" strokeWidth={2.5} />
         </TouchableOpacity>
       </View>
 
@@ -263,11 +263,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 4,
-  },
-  addButtonImage: {
-    width: 20,
-    height: 20,
-    resizeMode: 'contain',
   },
   content: {
     flex: 1,

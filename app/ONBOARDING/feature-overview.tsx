@@ -114,7 +114,7 @@ export default function FeatureOverview() {
   };
 
   const handleSkip = () => {
-    router.push('/ONBOARDING/account');
+    router.push('/NAV/home');
   };
 
   return (

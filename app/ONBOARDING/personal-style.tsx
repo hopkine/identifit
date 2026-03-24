@@ -61,8 +61,7 @@ export default function PersonalStyleScreen() {
   };
 
   const handleSkip = () => {
-    console.log('Skip pressed');
-    router.push('/NAV');
+    router.push('/NAV/home');
   };
 
   const handleContinue = () => {

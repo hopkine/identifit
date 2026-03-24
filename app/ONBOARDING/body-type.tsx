@@ -82,8 +82,7 @@ export default function BodyTypeScreen() {
   };
 
   const handleSkip = () => {
-    console.log('Skip pressed');
-    router.push('/NAV');
+    router.push('/NAV/home');
   };
 
   const handleContinue = () => {

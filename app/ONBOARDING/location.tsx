@@ -41,7 +41,7 @@ export default function LocationScreen() {
 
       if (status === 'granted') {
         // Location permission granted, navigate to main app
-        router.push('/(tabs)');
+        router.push('/NAV/home');
       } else {
         // Permission denied
         Alert.alert(
@@ -58,7 +58,7 @@ export default function LocationScreen() {
   };
 
   const handleSkip = () => {
-    router.push('/(tabs)');
+    router.push('/NAV/home');
   };
 
   return (

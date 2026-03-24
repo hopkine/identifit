@@ -253,7 +253,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sparkleEmoji: {
-    fontSize: 16,
+    fontSize: 14,
   },
   settingsButton: {
     padding: 8,

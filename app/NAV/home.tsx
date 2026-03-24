@@ -10,10 +10,9 @@ import {
   Alert,
   ActionSheetIOS,
   Platform,
-  Animated,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Plus, Calendar } from 'lucide-react-native';
+import { Plus, Calendar, ChevronRight } from 'lucide-react-native';
 import {
   useFonts,
   Caladea_400Regular,
@@ -30,6 +29,36 @@ import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useOOTD } from '@/hooks/useOOTD';
 import { currentUser } from '@/data/ootd';
 import { LAYOUT, constrainedWidth } from '@/constants/layout';
+import StreakIcon from '@/components/StreakIcon';
+import StarIcon from '@/components/StarIcon';
+
+/** Outfit-of-the-week strip — matches design reference proportions (~1 : 3.7) */
+const OUTFIT_SLOT_WIDTH = 56;
+const OUTFIT_SLOT_HEIGHT = 208;
+const OUTFIT_DAY_GAP = 10;
+/** Dot + date + weekday stack above each slot (aligns chevron with slot column) */
+const OUTFIT_LABEL_STACK_HEIGHT = 64;
+
+/** Corner decoration icons on stat cards (Streak + Top Styles) */
+const STAT_CARD_DECOR_ICON_WIDTH = 46;
+const STAT_CARD_DECOR_ICON_HEIGHT = 70;
+
+function formatOutfitWeekRange(
+  days: { dateString: string }[]
+): string {
+  if (days.length === 0) return '';
+  const first = new Date(days[0].dateString);
+  const last = new Date(days[days.length - 1].dateString);
+  const sameMonth =
+    first.getMonth() === last.getMonth() &&
+    first.getFullYear() === last.getFullYear();
+  if (sameMonth) {
+    return first.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  }
+  const start = first.toLocaleDateString('en-US', { month: 'long' });
+  const end = last.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+  return `${start} – ${end}`;
+}
 
 export default function HomeScreen() {
   const { saveOOTD, getOOTDForDate, getRecentOOTDs, userOOTDs, deleteOOTD, getTopStyles } =
@@ -37,9 +66,7 @@ export default function HomeScreen() {
   const cameraRef = React.useRef<any>(null);
   const [showCamera, setShowCamera] = React.useState(false);
   const [facing, setFacing] = React.useState<CameraType>('back');
-  const [logoOpacity] = React.useState(new Animated.Value(0));
-  const [logoTranslateY] = React.useState(new Animated.Value(20));
-  const [hasTriggeredHaptic, setHasTriggeredHaptic] = React.useState(false);
+  const calendarScrollRef = React.useRef<ScrollView>(null);
 
   const [fontsLoaded] = useFonts({
     'Caladea-Regular': Caladea_400Regular,
@@ -207,56 +234,6 @@ export default function HomeScreen() {
     }
   };
 
-  const handleScroll = (event: any) => {
-    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
-    const isAtBottom =
-      contentOffset.y >= contentSize.height - layoutMeasurement.height;
-    const overscrollAmount =
-      contentOffset.y - (contentSize.height - layoutMeasurement.height);
-
-    // Show logo when overscrolling at bottom by more than 20px
-    if (isAtBottom && overscrollAmount > 20) {
-      // Trigger haptic feedback only once per scroll session
-      if (!hasTriggeredHaptic && Platform.OS !== 'web') {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        setHasTriggeredHaptic(true);
-      }
-
-      // Animate logo in
-      Animated.parallel([
-        Animated.timing(logoOpacity, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(logoTranslateY, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      // Reset haptic trigger when not overscrolling
-      if (overscrollAmount <= 0) {
-        setHasTriggeredHaptic(false);
-      }
-
-      // Animate logo out
-      Animated.parallel([
-        Animated.timing(logoOpacity, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(logoTranslateY, {
-          toValue: 20,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  };
-
   if (showCamera) {
     return (
       <SafeAreaView style={styles.cameraContainer}>
@@ -395,9 +372,8 @@ export default function HomeScreen() {
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.scrollContent}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        bounces={true}
+        showsVerticalScrollIndicator={false}
+        bounces
       >
         {/* Header */}
         <View style={styles.header}>
@@ -411,29 +387,37 @@ export default function HomeScreen() {
         <View style={styles.statsContainer}>
           <View style={styles.statsRow}>
             <View style={styles.dayStreakCard}>
-              <Text style={styles.statNumber}>{currentStreak}</Text>
-              <Text style={styles.statLabel}>day OOTD{'\n'}streak</Text>
-              <Image
-                source={require('@/assets/images/Intersect.png')}
-                style={styles.iconImage}
-              />
+              <View style={styles.streakCardDecoration} pointerEvents="none">
+                <StreakIcon
+                  width={STAT_CARD_DECOR_ICON_WIDTH}
+                  height={STAT_CARD_DECOR_ICON_HEIGHT}
+                />
+              </View>
+              <View style={styles.dayStreakTextBlock}>
+                <Text style={styles.statNumber}>{currentStreak}</Text>
+                <Text style={styles.statLabel}>day OOTD{'\n'}streak</Text>
+              </View>
             </View>
 
             <View style={styles.topStylesCard}>
-              <Text style={styles.statTitle}>My Top Styles</Text>
-              {topStyles.length > 0 ? (
-                topStyles.map((style, index) => (
-                  <Text key={style} style={styles.styleItem}>
-                    {index + 1}. {style}
-                  </Text>
-                ))
-              ) : (
-                <Text style={styles.styleItem}>No styles yet</Text>
-              )}
-              <Image
-                source={require('@/assets/images/Intersect (1).png')}
-                style={styles.iconImage}
-              />
+              <View style={styles.topStylesCardDecoration} pointerEvents="none">
+                <StarIcon
+                  width={STAT_CARD_DECOR_ICON_WIDTH}
+                  height={STAT_CARD_DECOR_ICON_HEIGHT}
+                />
+              </View>
+              <View style={styles.topStylesTextBlock}>
+                <Text style={styles.statTitle}>My Top Styles</Text>
+                {topStyles.length > 0 ? (
+                  topStyles.map((style, index) => (
+                    <Text key={style} style={styles.styleItem}>
+                      {index + 1}. {style}
+                    </Text>
+                  ))
+                ) : (
+                  <Text style={styles.styleItem}>No styles yet</Text>
+                )}
+              </View>
             </View>
           </View>
 
@@ -457,18 +441,16 @@ export default function HomeScreen() {
           <View style={[styles.dot, styles.activeDot]} />
         </View>
 
-        {/* Outfit of the Week */}
+        {/* Outfit of the Week — closed card */}
         <View style={styles.outfitSectionWrapper}>
+          <View style={styles.outfitSectionInner}>
           <View style={styles.sectionHeader}>
             <View>
               <Text style={styles.sectionTitle}>
                 {currentUser.name.split(' ')[0]}'s Outfit of the Week
               </Text>
               <Text style={styles.sectionDate}>
-                {new Date().toLocaleDateString('en-US', {
-                  month: 'long',
-                  year: 'numeric',
-                })}
+                {formatOutfitWeekRange(outfitDays)}
               </Text>
             </View>
             <TouchableOpacity style={styles.calendarButton}>
@@ -476,78 +458,95 @@ export default function HomeScreen() {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.calendarContainer}>
-            {outfitDays.map((day, index) => (
-              <View key={index} style={styles.dayContainer}>
-                {/* Active day indicator dot */}
-                <View style={styles.dayIndicatorContainer}>
-                  {day.isToday && <View style={styles.activeDayDot} />}
+          <View style={styles.calendarRow}>
+            <ScrollView
+              ref={calendarScrollRef}
+              horizontal
+              nestedScrollEnabled
+              showsHorizontalScrollIndicator={false}
+              style={styles.calendarScroll}
+              contentContainerStyle={styles.calendarScrollContent}
+            >
+              {outfitDays.map((day, index) => (
+                <View key={index} style={styles.dayContainer}>
+                  <View style={styles.dayIndicatorContainer}>
+                    {day.isToday && <View style={styles.activeDayDot} />}
+                  </View>
+
+                  <Text
+                    style={[
+                      styles.dayNumber,
+                      day.isToday && styles.currentDayNumber,
+                    ]}
+                  >
+                    {day.date}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.dayName,
+                      day.isToday && styles.currentDayName,
+                    ]}
+                  >
+                    {day.day}
+                  </Text>
+
+                  {day.hasOutfit ? (
+                    <TouchableOpacity
+                      style={styles.outfitImageContainer}
+                      onLongPress={() => handleLongPressOOTD(day)}
+                      delayLongPress={500}
+                      activeOpacity={0.8}
+                    >
+                      <Image
+                        source={
+                          typeof day.ootd?.imageUri === 'string'
+                            ? { uri: day.ootd.imageUri }
+                            : day.ootd?.imageUri
+                        }
+                        style={styles.backgroundImage}
+                      />
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity
+                      style={styles.addOutfitButton}
+                      onPress={handleAddOutfit}
+                      activeOpacity={0.85}
+                    >
+                      <View style={styles.addOutfitCircle}>
+                        <Plus size={18} color="#1a1a1a" strokeWidth={2.5} />
+                      </View>
+                    </TouchableOpacity>
+                  )}
                 </View>
-
-                <Text
-                  style={[
-                    styles.dayNumber,
-                    day.isToday && styles.currentDayNumber,
-                  ]}
-                >
-                  {day.date}
-                </Text>
-                <Text
-                  style={[styles.dayName, day.isToday && styles.currentDayName]}
-                >
-                  {day.day}
-                </Text>
-
-                {day.hasOutfit ? (
-                  <TouchableOpacity
-                    style={styles.outfitImageContainer}
-                    onLongPress={() => handleLongPressOOTD(day)}
-                    delayLongPress={500}
-                    activeOpacity={0.8}
-                  >
-                    <Image
-                      source={
-                        typeof day.ootd?.imageUri === 'string'
-                          ? { uri: day.ootd.imageUri }
-                          : day.ootd?.imageUri
-                      }
-                      style={styles.backgroundImage}
-                    />
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    style={styles.addOutfitButton}
-                    onPress={handleAddOutfit}
-                  >
-                    <Image
-                      source={require('@/assets/images/Group 32 (1).png')}
-                      style={styles.addButtonImage}
-                    />
-                  </TouchableOpacity>
-                )}
-              </View>
-            ))}
+              ))}
+            </ScrollView>
+            <TouchableOpacity
+              style={styles.calendarChevron}
+              onPress={() =>
+                calendarScrollRef.current?.scrollToEnd({ animated: true })
+              }
+              hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+              accessibilityLabel="Scroll outfits"
+            >
+              <ChevronRight size={22} color="#B3C8FF" strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
           </View>
         </View>
 
-        {/* Logo Teaser */}
-        <Animated.View
-          style={[
-            styles.logoTeaser,
-            {
-              opacity: logoOpacity,
-              transform: [{ translateY: logoTranslateY }],
-            },
-          ]}
-        >
-          <Image
-            source={require('@/assets/images/image copy.png')}
-            style={styles.logoImage}
-            resizeMode="contain"
-          />
-          <Text style={styles.logoText}>identifit</Text>
-          <Text style={styles.logoTagline}>Your style, identified</Text>
-        </Animated.View>
+        {/* Bottom spoiler — scroll to reveal */}
+        <View style={styles.spoilerFooter}>
+          <View style={styles.spoilerRule} />
+          <View style={styles.logoTeaser}>
+            <Image
+              source={require('@/assets/images/image copy.png')}
+              style={styles.logoImage}
+              resizeMode="contain"
+            />
+            <Text style={styles.logoText}>identifit</Text>
+            <Text style={styles.logoTagline}>Your style, identified</Text>
+          </View>
+        </View>
       </ScrollView>
       </View>
     </SafeAreaView>
@@ -570,7 +569,7 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingTop: 20,
-    paddingBottom: 40,
+    paddingBottom: 32,
   },
   header: {
     marginBottom: 30,
@@ -609,8 +608,20 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 20,
     position: 'relative',
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(244, 173, 179, 0.25)',
+  },
+  streakCardDecoration: {
+    position: 'absolute',
+    right: -6,
+    bottom: -8,
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+    zIndex: 0,
+  },
+  dayStreakTextBlock: {
+    zIndex: 1,
   },
   topStylesCard: {
     flex: 1,
@@ -618,8 +629,20 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 20,
     position: 'relative',
+    overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(235, 252, 183, 0.25)',
+  },
+  topStylesCardDecoration: {
+    position: 'absolute',
+    right: -6,
+    bottom: -8,
+    justifyContent: 'flex-end',
+    alignItems: 'flex-end',
+    zIndex: 0,
+  },
+  topStylesTextBlock: {
+    zIndex: 1,
   },
   statNumber: {
     fontSize: 27,
@@ -649,7 +672,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 20,
     right: 20,
-    resizeMode: 'contain',
   },
   progressCard: {
     backgroundColor: 'rgba(63, 63, 63, 0.25)',
@@ -705,19 +727,25 @@ const styles = StyleSheet.create({
     backgroundColor: '#C0D1FF',
   },
   outfitSectionWrapper: {
-    backgroundColor: 'rgba(63, 63, 63, 0.25)',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: LAYOUT.paddingHorizontal,
-    marginTop: 20,
-    borderColor: 'rgba(194, 194, 194, 0.4)',
+    marginHorizontal: LAYOUT.paddingHorizontal,
+    marginTop: 8,
+    marginBottom: 8,
+    borderRadius: 20,
     borderWidth: 1,
+    borderColor: 'rgba(194, 194, 194, 0.4)',
+    backgroundColor: 'rgba(63, 63, 63, 0.25)',
+    overflow: 'hidden',
+  },
+  outfitSectionInner: {
+    paddingHorizontal: 18,
+    paddingTop: 18,
+    paddingBottom: 20,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 20,
+    marginBottom: 18,
   },
   sectionTitle: {
     fontSize: 18,
@@ -726,11 +754,11 @@ const styles = StyleSheet.create({
     color: '#ffffff',
   },
   sectionDate: {
-    marginTop: 8,
+    marginTop: 6,
     fontSize: 12,
     fontWeight: '400',
     fontFamily: 'Helvetica Neue',
-    color: '#C0D1FF',
+    color: '#B3C8FF',
   },
   calendarButton: {
     width: 40,
@@ -738,19 +766,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  calendarContainer: {
+  calendarRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  calendarScroll: {
+    flex: 1,
+    marginRight: 4,
+  },
+  calendarScrollContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: OUTFIT_DAY_GAP,
+    paddingRight: 4,
   },
   dayContainer: {
     alignItems: 'center',
-    flex: 1,
+    width: OUTFIT_SLOT_WIDTH,
+  },
+  calendarChevron: {
+    height: OUTFIT_SLOT_HEIGHT,
+    justifyContent: 'center',
+    marginTop: OUTFIT_LABEL_STACK_HEIGHT,
+    paddingLeft: 4,
   },
   dayIndicatorContainer: {
-    height: 20,
+    height: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   activeDayDot: {
     width: 5,
@@ -768,8 +812,8 @@ const styles = StyleSheet.create({
   dayName: {
     fontSize: 12,
     fontFamily: 'Helvetica Neue',
-    color: '#FFFFFF',
-    marginBottom: 12,
+    color: 'rgba(255, 255, 255, 0.82)',
+    marginBottom: 10,
   },
   currentDayNumber: {
     fontWeight: 'bold',
@@ -786,11 +830,13 @@ const styles = StyleSheet.create({
     textShadowRadius: 10,
   },
   outfitImageContainer: {
-    width: 62,
-    height: 198,
-    borderRadius: 25,
+    width: OUTFIT_SLOT_WIDTH,
+    height: OUTFIT_SLOT_HEIGHT,
+    borderRadius: 28,
     overflow: 'hidden',
     position: 'relative',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.92)',
   },
   backgroundImage: {
     position: 'absolute',
@@ -804,22 +850,34 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
   addOutfitButton: {
-    width: 62,
-    height: 198,
-    borderRadius: 25,
+    width: OUTFIT_SLOT_WIDTH,
+    height: OUTFIT_SLOT_HEIGHT,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(40, 40, 40, 0.5)',
+  },
+  addOutfitCircle: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#B3C8FF',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  addButtonImage: {
-    width: 17,
-    height: 17,
-    resizeMode: 'contain',
+  spoilerFooter: {
+    marginTop: 28,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
+    paddingBottom: 24,
+  },
+  spoilerRule: {
+    height: 1,
+    backgroundColor: 'rgba(192, 209, 255, 0.12)',
+    marginBottom: 24,
   },
   logoTeaser: {
     alignItems: 'center',
-    paddingVertical: 20,
-    paddingHorizontal: LAYOUT.paddingHorizontal,
-    marginTop: 20,
+    paddingVertical: 8,
   },
   logoImage: {
     width: 50,
@@ -836,10 +894,8 @@ const styles = StyleSheet.create({
   },
   logoTagline: {
     fontSize: 12,
-    fontFamily: 'WorkSans-Regular',
     color: '#9CA3AF',
     opacity: 0.7,
-    fontStyle: 'italic',
   },
   chartContainer: {
     flexDirection: 'row',
