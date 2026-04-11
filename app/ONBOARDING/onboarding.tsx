@@ -5,9 +5,11 @@ import {
   StyleSheet,
   Animated,
   Image,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LAYOUT, constrainedWidth, SCREEN_HEIGHT } from '@/constants/layout';
+import BannerLogo from '@/components/BannerLogo';
 
 export default function Welcome() {
   const router = useRouter();
@@ -25,18 +27,21 @@ export default function Welcome() {
   const starFloat = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    // Web: react-native-svg often does not paint inside Animated.View when useNativeDriver is true.
+    const logoNativeDriver = Platform.OS !== 'web';
+
     // Start text fade-in
     setTimeout(() => {
       Animated.parallel([
         Animated.timing(textOpacity, {
           toValue: 1,
           duration: 2000,
-          useNativeDriver: true,
+          useNativeDriver: logoNativeDriver,
         }),
         Animated.timing(textScale, {
           toValue: 1,
           duration: 2000,
-          useNativeDriver: true,
+          useNativeDriver: logoNativeDriver,
         }),
       ]).start();
     }, 400);
@@ -124,11 +129,9 @@ export default function Welcome() {
                 transform: [{ scale: textScale }],
               }}
             >
-              <Image
-                source={require('@/assets/images/identifit.png')}
-                style={styles.logo}
-                resizeMode="contain"
-              />
+              <View style={styles.bannerLogoBox}>
+                <BannerLogo width={220} />
+              </View>
             </Animated.View>
 
             {/* Vector Star */}
@@ -206,9 +209,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logo: {
+  bannerLogoBox: {
     width: 220,
-    height: 76,
+    height: (67 / 228) * 220,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   star: {
     position: 'absolute',

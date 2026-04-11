@@ -4,10 +4,13 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   Image,
 } from 'react-native';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -22,7 +25,8 @@ import {
 } from '@expo-google-fonts/work-sans';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
-import { LAYOUT, constrainedWidth } from '@/constants/layout';
+import { constrainedWidth } from '@/constants/layout';
+import { onboardingScreenStyles as os } from '@/constants/onboardingScreens';
 
 interface BodyType {
   id: string;
@@ -66,6 +70,7 @@ const bodyTypes: BodyType[] = [
 
 export default function BodyTypeScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [selectedBodyType, setSelectedBodyType] = useState<string | null>(null);
 
   const [fontsLoaded] = useFonts({
@@ -82,7 +87,7 @@ export default function BodyTypeScreen() {
   };
 
   const handleSkip = () => {
-    router.push('/NAV/home');
+    router.push('/NAV');
   };
 
   const handleContinue = () => {
@@ -103,143 +108,101 @@ export default function BodyTypeScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={[styles.innerContainer, { width: constrainedWidth }]}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBack}
-          activeOpacity={0.6}
-        >
-          <ChevronLeft size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.skipButton}
-          onPress={handleSkip}
-          activeOpacity={0.6}
-        >
-          <Text style={styles.skipButtonText}>Skip</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>Body Type</Text>
-          <Text style={styles.subtitle}>
-            This will help us offer better recommendations based on your body
-            type.
-          </Text>
-        </View>
-
-        <View style={styles.optionsContainer}>
-          {bodyTypes.map((bodyType) => (
-            <TouchableOpacity
-              key={bodyType.id}
-              style={[
-                styles.optionCard,
-                selectedBodyType === bodyType.id && styles.selectedOptionCard,
-              ]}
-              onPress={() => handleBodyTypeSelect(bodyType.id)}
-              activeOpacity={0.8}
-            >
-              <View style={styles.optionContent}>
-                <View style={styles.imageContainer}>
-                  <Image source={bodyType.image} style={styles.bodyImage} />
-                </View>
-                <View style={styles.textContainer}>
-                  <Text style={styles.optionTitle}>{bodyType.name}</Text>
-                  <Text style={styles.optionDescription}>
-                    {bodyType.description}
-                  </Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
-
-      <View style={styles.bottomContainer}>
-        <TouchableOpacity
-          style={[
-            styles.continueButton,
-            !selectedBodyType && styles.continueButtonDisabled,
-          ]}
-          onPress={handleContinue}
-          activeOpacity={selectedBodyType ? 0.8 : 1}
-          disabled={!selectedBodyType}
-        >
-          <Text
-            style={[
-              styles.continueButtonText,
-              !selectedBodyType && styles.continueButtonTextDisabled,
-            ]}
+    <SafeAreaView style={os.container} edges={['top', 'left', 'right']}>
+      <View style={[os.innerContainer, { width: constrainedWidth }]}>
+        <View style={os.headerBar}>
+          <TouchableOpacity
+            style={os.backButton}
+            onPress={handleBack}
+            activeOpacity={0.6}
           >
-            Continue
-          </Text>
-        </TouchableOpacity>
-      </View>
+            <ChevronLeft size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleSkip} activeOpacity={0.6}>
+            <Text style={os.skipButtonText}>Skip</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          style={os.content}
+          contentContainerStyle={os.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={os.titleContainer}>
+            <Text style={os.title}>Body Type</Text>
+            <Text style={os.subtitle}>
+              This will help us offer better recommendations based on your body
+              type.
+            </Text>
+          </View>
+
+          <View style={styles.optionsContainer}>
+            {bodyTypes.map((bodyType) => (
+              <TouchableOpacity
+                key={bodyType.id}
+                style={[
+                  styles.optionCard,
+                  selectedBodyType === bodyType.id && styles.selectedOptionCard,
+                ]}
+                onPress={() => handleBodyTypeSelect(bodyType.id)}
+                activeOpacity={0.8}
+              >
+                <View style={styles.optionContent}>
+                  <View style={styles.imageContainer}>
+                    <Image source={bodyType.image} style={styles.bodyImage} />
+                  </View>
+                  <View style={styles.textContainer}>
+                    <Text style={styles.optionTitle}>{bodyType.name}</Text>
+                    <Text style={styles.optionDescription}>
+                      {bodyType.description}
+                    </Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+
+        <View
+          style={[
+            os.bottomContainer,
+            { paddingBottom: Math.max(insets.bottom, 12) },
+          ]}
+        >
+          <TouchableOpacity
+            style={[
+              styles.continueButton,
+              !selectedBodyType && styles.continueButtonDisabled,
+            ]}
+            onPress={handleContinue}
+            activeOpacity={selectedBodyType ? 0.8 : 1}
+            disabled={!selectedBodyType}
+          >
+            <Text
+              style={[
+                styles.continueButtonText,
+                !selectedBodyType && styles.continueButtonTextDisabled,
+              ]}
+            >
+              Continue
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: LAYOUT.backgroundColor,
-    alignItems: 'center',
-  },
-  innerContainer: {
-    flex: 1,
-    width: '100%',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: LAYOUT.paddingHorizontal,
-    paddingBottom: 20,
-  },
-  backButton: {
-    padding: 8,
-  },
-  skipButton: {
-    padding: 8,
-  },
-  skipButtonText: {
-    fontSize: 15,
-    fontFamily: 'Helvetica Neue',
-    color: '#FFFFFF',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: LAYOUT.paddingHorizontal,
-  },
-  titleContainer: {
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 30,
-    fontFamily: 'Caladea-Regular',
-    color: '#C0D1FF',
-    marginBottom: 12,
-  },
-  subtitle: {
-    fontSize: 15,
-    fontFamily: 'Helvetica Neue',
-    color: '#B5AFA9',
-    lineHeight: 22,
-  },
   optionsContainer: {
-    gap: 16,
+    gap: 20,
   },
   optionCard: {
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: '#4A4A4C',
     borderRadius: 12,
-    padding: 16,
+    padding: 18,
   },
   selectedOptionCard: {
     borderColor: '#A8B3FF',
@@ -275,10 +238,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica Neue',
     color: '#D9D9D9',
     lineHeight: 18,
-  },
-  bottomContainer: {
-    paddingHorizontal: LAYOUT.paddingHorizontal,
-    paddingTop: 20,
   },
   continueButton: {
     backgroundColor: '#A8B3FF',

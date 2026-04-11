@@ -4,11 +4,13 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   ScrollView,
   TextInput,
-  Image,
 } from 'react-native';
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -23,7 +25,8 @@ import {
 } from '@expo-google-fonts/work-sans';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
-import { LAYOUT, constrainedWidth } from '@/constants/layout';
+import { constrainedWidth } from '@/constants/layout';
+import { onboardingScreenStyles as os } from '@/constants/onboardingScreens';
 
 const styleOptions = [
   'Y2K',
@@ -44,6 +47,7 @@ const styleOptions = [
 
 export default function PersonalStyleScreen() {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
   const [customStyles, setCustomStyles] = useState<string[]>([]);
@@ -61,7 +65,7 @@ export default function PersonalStyleScreen() {
   };
 
   const handleSkip = () => {
-    router.push('/NAV/home');
+    router.push('/NAV');
   };
 
   const handleContinue = () => {
@@ -99,150 +103,107 @@ export default function PersonalStyleScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={[styles.innerContainer, { width: constrainedWidth }]}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBack}
-          activeOpacity={0.6}
-        >
-          <ChevronLeft size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={styles.skipButton}
-          onPress={handleSkip}
-          activeOpacity={0.6}
-        >
-          <Text style={styles.skipButtonText}>Skip</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>Personal Style</Text>
-          <Text style={styles.subtitle}>
-            This will help us identify your style and offer better outfit
-            recommendations.
-          </Text>
-        </View>
-
-        <View style={styles.searchContainer}>
-          <TextInput
-            style={styles.searchInput}
-            placeholder="ex. balletcore"
-            placeholderTextColor="#8E8E93"
-            value={searchText}
-            onChangeText={setSearchText}
-            onSubmitEditing={handleSearchSubmit}
-            returnKeyType="done"
-          />
-        </View>
-
-        <View style={styles.stylesContainer}>
-          {allStyles.map((style, index) => (
-            <TouchableOpacity
-              key={`${style}-${index}`}
-              style={[
-                styles.styleChip,
-                selectedStyles.includes(style) && styles.selectedStyleChip,
-              ]}
-              onPress={() => toggleStyle(style)}
-              activeOpacity={0.8}
-            >
-              <Text
-                style={[
-                  styles.styleChipText,
-                  selectedStyles.includes(style) &&
-                    styles.selectedStyleChipText,
-                ]}
-              >
-                {style}
-              </Text>
-              {selectedStyles.includes(style) && (
-                <View style={styles.checkIcon}>
-                  <Text style={styles.checkMark}>✓</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          ))}
-        </View>
-      </ScrollView>
-
-      <View style={styles.bottomContainer}>
-        <TouchableOpacity
-          style={[
-            styles.continueButton,
-            selectedStyles.length === 0 && styles.continueButtonDisabled,
-          ]}
-          onPress={handleContinue}
-          activeOpacity={selectedStyles.length > 0 ? 0.8 : 1}
-          disabled={selectedStyles.length === 0}
-        >
-          <Text
-            style={[
-              styles.continueButtonText,
-              selectedStyles.length === 0 && styles.continueButtonTextDisabled,
-            ]}
+    <SafeAreaView style={os.container} edges={['top', 'left', 'right']}>
+      <View style={[os.innerContainer, { width: constrainedWidth }]}>
+        <View style={os.headerBar}>
+          <TouchableOpacity
+            style={os.backButton}
+            onPress={handleBack}
+            activeOpacity={0.6}
           >
-            Continue
-          </Text>
-        </TouchableOpacity>
-      </View>
+            <ChevronLeft size={24} color="#FFFFFF" />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleSkip} activeOpacity={0.6}>
+            <Text style={os.skipButtonText}>Skip</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ScrollView
+          style={os.content}
+          contentContainerStyle={os.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={os.titleContainer}>
+            <Text style={os.title}>Personal Style</Text>
+            <Text style={os.subtitle}>
+              This will help us identify your style and offer better outfit
+              recommendations.
+            </Text>
+          </View>
+
+          <View style={styles.searchContainer}>
+            <TextInput
+              style={styles.searchInput}
+              placeholder="ex. balletcore"
+              placeholderTextColor="#8E8E93"
+              value={searchText}
+              onChangeText={setSearchText}
+              onSubmitEditing={handleSearchSubmit}
+              returnKeyType="done"
+            />
+          </View>
+
+          <View style={styles.stylesContainer}>
+            {allStyles.map((style, index) => (
+              <TouchableOpacity
+                key={`${style}-${index}`}
+                style={[
+                  styles.styleChip,
+                  selectedStyles.includes(style) && styles.selectedStyleChip,
+                ]}
+                onPress={() => toggleStyle(style)}
+                activeOpacity={0.8}
+              >
+                <Text
+                  style={[
+                    styles.styleChipText,
+                    selectedStyles.includes(style) &&
+                      styles.selectedStyleChipText,
+                  ]}
+                >
+                  {style}
+                </Text>
+                {selectedStyles.includes(style) && (
+                  <View style={styles.checkIcon}>
+                    <Text style={styles.checkMark}>✓</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+
+        <View
+          style={[
+            os.bottomContainer,
+            { paddingBottom: Math.max(insets.bottom, 12) },
+          ]}
+        >
+          <TouchableOpacity
+            style={[
+              styles.continueButton,
+              selectedStyles.length === 0 && styles.continueButtonDisabled,
+            ]}
+            onPress={handleContinue}
+            activeOpacity={selectedStyles.length > 0 ? 0.8 : 1}
+            disabled={selectedStyles.length === 0}
+          >
+            <Text
+              style={[
+                styles.continueButtonText,
+                selectedStyles.length === 0 && styles.continueButtonTextDisabled,
+              ]}
+            >
+              Continue
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: LAYOUT.backgroundColor,
-    alignItems: 'center',
-  },
-  innerContainer: {
-    flex: 1,
-    width: '100%',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: LAYOUT.paddingHorizontal,
-    paddingTop: 10,
-    paddingBottom: 20,
-  },
-  backButton: {
-    padding: 8,
-  },
-  skipButton: {
-    padding: 8,
-  },
-  skipButtonText: {
-    fontSize: 15,
-    fontFamily: 'Helvetica Neue',
-    color: '#FFFFFF',
-  },
-  content: {
-    flex: 1,
-    paddingHorizontal: LAYOUT.paddingHorizontal,
-  },
-  titleContainer: {
-    marginBottom: 32,
-  },
-  title: {
-    fontSize: 30,
-    fontFamily: 'Caladea-Regular',
-    color: '#C0D1FF',
-    marginBottom: 12,
-  },
-  subtitle: {
-    fontSize: 15,
-    fontFamily: 'Helvetica Neue',
-    color: '#B5AFA9',
-    lineHeight: 22,
-  },
   searchContainer: {
     marginBottom: 32,
   },
@@ -295,11 +256,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#000000',
     fontWeight: 'bold',
-  },
-  bottomContainer: {
-    paddingHorizontal: LAYOUT.paddingHorizontal,
-    paddingBottom: 34,
-    paddingTop: 20,
   },
   continueButton: {
     backgroundColor: '#A8B3FF',

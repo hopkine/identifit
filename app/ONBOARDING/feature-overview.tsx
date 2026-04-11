@@ -6,6 +6,8 @@ import {
   StyleSheet,
   Image,
   Animated,
+  Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { ArrowRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -15,7 +17,8 @@ import {
   Caladea_700Bold,
 } from '@expo-google-fonts/caladea';
 
-import { LAYOUT, constrainedWidth, SCREEN_HEIGHT } from '@/constants/layout';
+import { LAYOUT } from '@/constants/layout';
+import { onboardingScreenStyles as os } from '@/constants/onboardingScreens';
 
 const SLIDE_TRANSITION_DURATION = 280;
 const GALLERY_TRANSITION_DURATION = 400;
@@ -38,10 +41,20 @@ export default function FeatureOverview() {
     'Caladea-Bold': Caladea_700Bold,
   });
 
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const safeW = Math.max(windowWidth, 1);
+  const safeH = Math.max(windowHeight, 1);
+  const maxContent =
+    safeW >= 768 ? LAYOUT.contentMaxWidthDesktop : LAYOUT.contentMaxWidthMobile;
+  const innerWidth = Math.min(maxContent, safeW);
+
+  /** Web static export: opacity + useNativeDriver on Image/SVG layers often fails to paint. */
+  const opacityNativeDriver = Platform.OS !== 'web';
+
   const galleryImages = [
-    require('@/assets/images/Frame 121075726.png'),
-    require('@/assets/images/Frame 121075729.png'),
-    require('@/assets/images/Frame 121075728.png'),
+    require('@/assets/images/onboarding assets/Frame 121075726.png'),
+    require('@/assets/images/onboarding assets/Frame 121075729.png'),
+    require('@/assets/images/onboarding assets/Frame 121075728.png'),
   ];
 
   // Crossfade when slide changes
@@ -50,10 +63,10 @@ export default function FeatureOverview() {
       Animated.timing(op, {
         toValue: i === currentSlide ? 1 : 0,
         duration: SLIDE_TRANSITION_DURATION,
-        useNativeDriver: true,
+        useNativeDriver: opacityNativeDriver,
       }).start();
     });
-  }, [currentSlide]);
+  }, [currentSlide, opacityNativeDriver]);
 
   // Smooth crossfade when gallery image changes (slide 1)
   useEffect(() => {
@@ -61,10 +74,10 @@ export default function FeatureOverview() {
       Animated.timing(op, {
         toValue: i === galleryIndex ? 1 : 0,
         duration: GALLERY_TRANSITION_DURATION,
-        useNativeDriver: true,
+        useNativeDriver: opacityNativeDriver,
       }).start();
     });
-  }, [galleryIndex]);
+  }, [galleryIndex, opacityNativeDriver]);
 
   useEffect(() => {
     if (currentSlide === 1) {
@@ -95,13 +108,13 @@ export default function FeatureOverview() {
       title: 'Recreate Inspirations',
       description:
         'Find similar pieces in your wardrobe to recreate outfit inspirations you love from social media and fashion magazines.',
-      image: require('@/assets/images/Group 121075721.png'),
+      image: require('@/assets/images/onboarding assets/Group 121075721.png'),
     },
     {
       title: 'Monthly Style Recap',
       description:
         'Review your style journey with monthly recaps showing your most-worn pieces, color preferences, and style evolution.',
-      image: require('@/assets/images/Group 121075722.png'),
+      image: require('@/assets/images/onboarding assets/Group 121075722.png'),
     },
   ];
 
@@ -114,15 +127,17 @@ export default function FeatureOverview() {
   };
 
   const handleSkip = () => {
-    router.push('/NAV/home');
+    router.push('/NAV');
   };
 
   return (
     <View style={styles.container}>
-      <View style={styles.innerContainer}>
-        <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-          <Text style={styles.skipText}>Skip</Text>
-        </TouchableOpacity>
+      <View style={[styles.innerContainer, { width: innerWidth, height: safeH }]}>
+        <View style={[os.headerBar, os.headerBarSkipOnly]}>
+          <TouchableOpacity onPress={handleSkip} activeOpacity={0.6}>
+            <Text style={os.skipButtonText}>Skip</Text>
+          </TouchableOpacity>
+        </View>
 
         {/* All images stay mounted (preloaded) - visibility via animated opacity for smooth crossfade */}
         <View style={styles.imageContainer} pointerEvents="none">
@@ -230,20 +245,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   innerContainer: {
-    width: constrainedWidth,
-    height: SCREEN_HEIGHT,
     position: 'relative',
-  },
-  skipButton: {
-    position: 'absolute',
-    top: 60,
-    right: LAYOUT.paddingHorizontal,
-    zIndex: 10,
-  },
-  skipText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '400',
   },
   imageContainer: {
     position: 'absolute',

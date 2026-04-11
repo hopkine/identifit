@@ -19,14 +19,6 @@ export default function TabLayout() {
         tabBarShowLabel: false,
       }}>
       <Tabs.Screen
-        name="index"
-        options={{
-          tabBarIcon: ({ size, color }) => (
-            <Shirt size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="saved"
         options={{
           tabBarIcon: ({ size, color }) => (
@@ -35,7 +27,15 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="home"
+        name="closet"
+        options={{
+          tabBarIcon: ({ size, color }) => (
+            <Shirt size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="index"
         options={{
           tabBarIcon: ({ size, color }) => (
             <House size={size} color={color} />
@@ -47,6 +47,14 @@ export default function TabLayout() {
         options={{
           tabBarIcon: ({ size, color }) => (
             <Compass size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          tabBarIcon: ({ size, color }) => (
+            <User size={size} color={color} />
           ),
         }}
       />
@@ -65,14 +73,6 @@ export default function TabLayout() {
           href: null,
           tabBarIcon: ({ size, color }) => (
             <Users size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="profile"
-        options={{
-          tabBarIcon: ({ size, color }) => (
-            <User size={size} color={color} />
           ),
         }}
       />

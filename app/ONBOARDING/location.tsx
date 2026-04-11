@@ -16,6 +16,7 @@ import {
 } from '@expo-google-fonts/caladea';
 
 import { LAYOUT, constrainedWidth, SCREEN_HEIGHT } from '@/constants/layout';
+import { onboardingScreenStyles as os } from '@/constants/onboardingScreens';
 
 export default function LocationScreen() {
   const router = useRouter();
@@ -41,7 +42,7 @@ export default function LocationScreen() {
 
       if (status === 'granted') {
         // Location permission granted, navigate to main app
-        router.push('/NAV/home');
+        router.push('/NAV');
       } else {
         // Permission denied
         Alert.alert(
@@ -58,15 +59,17 @@ export default function LocationScreen() {
   };
 
   const handleSkip = () => {
-    router.push('/NAV/home');
+    router.push('/NAV');
   };
 
   return (
     <View style={styles.container}>
       <View style={styles.innerContainer}>
-        <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
-          <Text style={styles.skipText}>Skip</Text>
-        </TouchableOpacity>
+        <View style={[os.headerBar, os.headerBarSkipOnly]}>
+          <TouchableOpacity onPress={handleSkip} activeOpacity={0.6}>
+            <Text style={os.skipButtonText}>Skip</Text>
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.contentContainer}>
           <View style={styles.textContainer}>
@@ -103,17 +106,6 @@ const styles = StyleSheet.create({
     width: constrainedWidth,
     height: SCREEN_HEIGHT,
     position: 'relative',
-  },
-  skipButton: {
-    position: 'absolute',
-    top: 60,
-    right: LAYOUT.paddingHorizontal,
-    zIndex: 10,
-  },
-  skipText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '400',
   },
   contentContainer: {
     flex: 1,

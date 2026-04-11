@@ -12,6 +12,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { ONBOARDING_HEADER_TOP } from '@/constants/onboardingScreens';
 
 export default function Login() {
   const router = useRouter();
@@ -49,7 +50,7 @@ export default function Login() {
               <View style={styles.logoContainer}>
                 <Image
                   style={styles.logo}
-                  source={require('@/assets/images/Group 121075715.png')}
+                  source={require('@/assets/images/onboarding assets/Group 121075715.png')}
                   resizeMode="contain"
                 />
               </View>
@@ -131,7 +132,7 @@ const styles = StyleSheet.create({
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 16,
+    marginTop: ONBOARDING_HEADER_TOP,
     marginBottom: 32,
   },
   backButton: {

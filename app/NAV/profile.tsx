@@ -18,6 +18,7 @@ import {
 import { useOOTD } from '@/hooks/useOOTD';
 import { currentUser } from '@/data/ootd';
 import OOTDCard from '@/components/OOTDCard';
+import FlameIcon from '@/components/FlameIcon';
 import { LAYOUT, constrainedWidth } from '@/constants/layout';
 
 export default function ProfileScreen() {
@@ -66,10 +67,7 @@ export default function ProfileScreen() {
             </View>
             <Text style={styles.separator}>.</Text>
             <View style={styles.statItem}>
-              <Image
-                source={require('@/assets/images/Group 46129.png')}
-                style={styles.streakIcon}
-              />
+              <FlameIcon width={16} height={22} />
               <Text style={styles.streakNumber}>23</Text>
             </View>
           </View>
@@ -230,11 +228,6 @@ const styles = StyleSheet.create({
   statText: {
     color: '#ffffff',
     fontSize: 15,
-  },
-  streakIcon: {
-    width: 16,
-    height: 22,
-    resizeMode: 'contain',
   },
   streakNumber: {
     color: '#757EFA',

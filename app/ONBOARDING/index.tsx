@@ -35,7 +35,7 @@ export default function OnboardingScreen() {
   };
 
   const handleSkip = () => {
-    router.push('/NAV/home');
+    router.push('/NAV');
   };
 
   if (!fontsLoaded) {
