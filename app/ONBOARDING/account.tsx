@@ -50,7 +50,7 @@ export default function Login() {
               <View style={styles.logoContainer}>
                 <Image
                   style={styles.logo}
-                  source={require('@/assets/images/onboarding assets/Group 121075715.png')}
+                  source={require('@/assets/images/onboarding-assets/Group 121075715.png')}
                   resizeMode="contain"
                 />
               </View>

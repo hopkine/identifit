@@ -10,8 +10,11 @@ import {
   Dimensions,
   PanResponder,
   TouchableWithoutFeedback,
+  Platform,
+  ScrollView,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
+import Svg, { Path } from 'react-native-svg';
 import { useFonts, Caladea_400Regular, Caladea_700Bold } from '@expo-google-fonts/caladea';
 import { WorkSans_400Regular, WorkSans_500Medium, WorkSans_600SemiBold } from '@expo-google-fonts/work-sans';
 
@@ -19,9 +22,12 @@ interface FilterSortSheetProps {
   visible: boolean;
   onClose: () => void;
   onApplyFilters: (filters: FilterState) => void;
+  /** Result counts for the primary button label (grid size when near me on vs off) */
+  itemCountDefault?: number;
+  itemCountNearMe?: number;
 }
 
-interface FilterState {
+export interface FilterState {
   season: 'spring' | 'summer' | 'fall' | 'winter' | null;
   bodyType: 'hourglass' | 'triangle' | 'rectangle' | 'oval' | 'heart' | null;
   showNearMe: boolean;
@@ -32,10 +38,69 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SHEET_MAX_HEIGHT = SCREEN_HEIGHT * 0.85;
 const SHEET_MIN_HEIGHT = SCREEN_HEIGHT * 0.5;
 
+/** Heroicons v2 outline `play` (https://heroicons.com), rotated −90° → tip up */
+const HERO_PLAY_OUTLINE_D =
+  'M5.25 5.65273C5.25 4.79705 6.1674 4.25462 6.91716 4.66698L18.4577 11.0143C19.2349 11.4417 19.2349 12.5584 18.4577 12.9858L6.91716 19.3331C6.1674 19.7455 5.25 19.203 5.25 18.3474V5.65273Z';
+
+/** Same box as summer emoji so SVG chips align visually */
+const FILTER_CHIP_ICON_SLOT = 42;
+const FILTER_CHIP_SVG_SIZE = 40;
+
+function BodyTypePlayIcon({ color, size = FILTER_CHIP_SVG_SIZE }: { color: string; size?: number }) {
+  return (
+    <View
+      style={{
+        width: size,
+        height: size,
+        alignItems: 'center',
+        justifyContent: 'center',
+        transform: [{ rotate: '-90deg' }],
+      }}
+    >
+      <Svg width={size} height={size} viewBox="0 0 24 24">
+        <Path
+          d={HERO_PLAY_OUTLINE_D}
+          fill="none"
+          stroke={color}
+          strokeWidth={1.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </Svg>
+    </View>
+  );
+}
+
+/** Heroicons v2 outline map-pin (https://heroicons.com) */
+function NearMeMapPinIcon({ color, size = FILTER_CHIP_SVG_SIZE }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z"
+        fill="none"
+        stroke={color}
+        strokeWidth={1.5}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 export default function FilterSortSheet({
   visible,
   onClose,
   onApplyFilters,
+  itemCountDefault = 7,
+  itemCountNearMe = 4,
 }: FilterSortSheetProps) {
   const [filters, setFilters] = useState<FilterState>({
     season: null,
@@ -44,9 +109,8 @@ export default function FilterSortSheet({
     comfortability: 0.5,
   });
 
-  const translateY = useRef(new Animated.Value(SHEET_MAX_HEIGHT)).current;
-  const lastGestureDy = useRef(0);
-  const [showButton, setShowButton] = useState(false);
+  const sheetHeight = useRef(new Animated.Value(0)).current;
+  const panStartHeightRef = useRef(SHEET_MAX_HEIGHT);
 
   const [fontsLoaded] = useFonts({
     'Caladea-Regular': Caladea_400Regular,
@@ -60,40 +124,54 @@ export default function FilterSortSheet({
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        const { dy } = gestureState;
-        return Math.abs(dy) > 5;
+        return Math.abs(gestureState.dy) > 4;
       },
-      onPanResponderMove: (_, gestureState) => {
-        const { dy } = gestureState;
-        if (dy > 0) {
-          translateY.setValue(dy);
-        } else if (dy < -20) {
-          setShowButton(true);
-        }
+      onPanResponderGrant: () => {
+        sheetHeight.stopAnimation((value) => {
+          panStartHeightRef.current = value;
+        });
       },
-      onPanResponderRelease: (_, gestureState) => {
-        const { dy, vy } = gestureState;
-        if (dy > 100 || vy > 0.5) {
-          closeSheet();
-        } else {
-          Animated.spring(translateY, {
-            toValue: 0,
-            useNativeDriver: true,
-            damping: 50,
-            stiffness: 300,
+      onPanResponderMove: (_, { dy }) => {
+        const next = panStartHeightRef.current - dy;
+        sheetHeight.setValue(
+          Math.max(0, Math.min(SHEET_MAX_HEIGHT, next))
+        );
+      },
+      onPanResponderRelease: (_, { vy }) => {
+        sheetHeight.stopAnimation((currentHeight) => {
+          const dismissThreshold = SHEET_MIN_HEIGHT * 0.35;
+          if (currentHeight < dismissThreshold || (currentHeight < SHEET_MIN_HEIGHT && vy > 0.35)) {
+            closeSheet();
+            return;
+          }
+          const mid = (SHEET_MIN_HEIGHT + SHEET_MAX_HEIGHT) / 2;
+          let target: number;
+          if (vy < -0.45) {
+            target = SHEET_MAX_HEIGHT;
+          } else if (vy > 0.45) {
+            target = SHEET_MIN_HEIGHT;
+          } else {
+            target =
+              currentHeight > mid ? SHEET_MAX_HEIGHT : SHEET_MIN_HEIGHT;
+          }
+          target = Math.max(SHEET_MIN_HEIGHT, Math.min(SHEET_MAX_HEIGHT, target));
+          Animated.spring(sheetHeight, {
+            toValue: target,
+            useNativeDriver: false,
+            damping: 52,
+            stiffness: 320,
           }).start();
-        }
+        });
       },
     })
   ).current;
 
   useEffect(() => {
     if (visible) {
-      setShowButton(false);
-      translateY.setValue(SHEET_MAX_HEIGHT);
-      Animated.spring(translateY, {
-        toValue: 0,
-        useNativeDriver: true,
+      sheetHeight.setValue(0);
+      Animated.spring(sheetHeight, {
+        toValue: SHEET_MAX_HEIGHT,
+        useNativeDriver: false,
         damping: 50,
         stiffness: 300,
       }).start();
@@ -101,10 +179,10 @@ export default function FilterSortSheet({
   }, [visible]);
 
   const closeSheet = () => {
-    Animated.timing(translateY, {
-      toValue: SHEET_MAX_HEIGHT,
-      duration: 250,
-      useNativeDriver: true,
+    Animated.timing(sheetHeight, {
+      toValue: 0,
+      duration: 260,
+      useNativeDriver: false,
     }).start(() => {
       onClose();
     });
@@ -148,12 +226,13 @@ export default function FilterSortSheet({
           style={[
             styles.sheetContainer,
             {
-              transform: [{ translateY }],
+              height: sheetHeight,
             },
           ]}
         >
-          <SafeAreaView style={styles.container}>
-            {/* Drag Handle */}
+          <SafeAreaView style={styles.safeArea}>
+            <View style={styles.sheetInner}>
+            {/* Drag Handle — drag up to expand, down to shrink / dismiss */}
             <View {...panResponder.panHandlers} style={styles.handleContainer}>
               <View style={styles.handle} />
             </View>
@@ -166,6 +245,13 @@ export default function FilterSortSheet({
               </TouchableOpacity>
             </View>
 
+        <ScrollView
+          style={styles.scroll}
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          bounces
+        >
         <View style={styles.content}>
           {/* Filter Options */}
           <View style={styles.filterRow}>
@@ -180,7 +266,9 @@ export default function FilterSortSheet({
                   filters.season === 'summer' ? null : 'summer'
                 )}
               >
-                <Text style={styles.seasonEmoji}>🏖️</Text>
+                <View style={styles.filterIconSlot}>
+                  <Text style={styles.seasonEmoji}>🏖️</Text>
+                </View>
               </TouchableOpacity>
               <Text style={styles.filterText}>
                 Season: Summer
@@ -198,8 +286,10 @@ export default function FilterSortSheet({
                   filters.bodyType ? null : 'hourglass'
                 )}
               >
-                <View style={styles.bodyTypeIcon}>
-                  <View style={styles.triangle} />
+                <View style={styles.filterIconSlot}>
+                  <BodyTypePlayIcon
+                    color={filters.bodyType ? '#1C1C1E' : '#FFFFFF'}
+                  />
                 </View>
               </TouchableOpacity>
               <Text style={styles.filterText}>
@@ -216,7 +306,11 @@ export default function FilterSortSheet({
                 ]}
                 onPress={() => updateFilter('showNearMe', !filters.showNearMe)}
               >
-                <Text style={styles.locationEmoji}>📍</Text>
+                <View style={styles.filterIconSlot}>
+                  <NearMeMapPinIcon
+                    color={filters.showNearMe ? '#1C1C1E' : '#FFFFFF'}
+                  />
+                </View>
               </TouchableOpacity>
               <Text style={styles.filterText}>
                 Show Posts Near Me
@@ -237,7 +331,7 @@ export default function FilterSortSheet({
                 onValueChange={(value) => updateFilter('comfortability', value)}
                 minimumTrackTintColor="transparent"
                 maximumTrackTintColor="transparent"
-                thumbStyle={styles.sliderThumb}
+                thumbTintColor="#FFFFFF"
               />
             </View>
 
@@ -253,15 +347,18 @@ export default function FilterSortSheet({
             </View>
           </View>
         </View>
+        </ScrollView>
 
-            {/* Apply Button */}
-            {showButton && (
-              <View style={styles.footer}>
-                <TouchableOpacity style={styles.applyButton} onPress={handleApply}>
-                  <Text style={styles.applyButtonText}>Show 348 Results</Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            <View style={styles.footer}>
+              <TouchableOpacity style={styles.applyButton} onPress={handleApply}>
+                <Text style={styles.applyButtonText}>
+                  {`Show ${
+                    filters.showNearMe ? itemCountNearMe : itemCountDefault
+                  } Results`}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            </View>
           </SafeAreaView>
         </Animated.View>
       </View>
@@ -282,7 +379,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#000000',
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
-    maxHeight: SHEET_MAX_HEIGHT,
+    overflow: 'hidden',
+    width: '100%',
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -292,8 +390,20 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 10,
   },
-  container: {
+  safeArea: {
+    flex: 1,
     backgroundColor: '#000000',
+  },
+  sheetInner: {
+    flex: 1,
+  },
+  scroll: {
+    flex: 1,
+    flexGrow: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 8,
   },
   handleContainer: {
     alignItems: 'center',
@@ -321,11 +431,10 @@ const styles = StyleSheet.create({
   },
   resetText: {
     fontSize: 15,
-    fontFamily: 'Helvetica Neue',
+    fontFamily: 'WorkSans-Medium',
     color: '#FFFFFF',
   },
   content: {
-    flex: 1,
     paddingHorizontal: 24,
     paddingTop: 32,
   },
@@ -339,41 +448,44 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
   },
+  /** Wide capsule like iOS-style dark control + faint inner rim */
   filterButton: {
-    width: 103,
-    height: 100,
-    backgroundColor: '#595959',
-    borderRadius: 30,
+    alignSelf: 'stretch',
+    width: '100%',
+    minHeight: 52,
+    paddingHorizontal: 22,
+    paddingVertical: 11,
+    backgroundColor: '#333333',
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   selectedFilter: {
     backgroundColor: '#C0D1FF',
+    borderColor: 'rgba(60, 60, 67, 0.22)',
+  },
+  filterIconSlot: {
+    width: FILTER_CHIP_ICON_SLOT,
+    height: FILTER_CHIP_ICON_SLOT,
+    alignItems: 'center',
+    justifyContent: 'center',
+    alignSelf: 'center',
   },
   seasonEmoji: {
-    fontSize: 32,
-  },
-  bodyTypeIcon: {
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  triangle: {
-    width: 0,
-    height: 0,
-    borderLeftWidth: 12,
-    borderRightWidth: 12,
-    borderBottomWidth: 20,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
-    borderBottomColor: '#FFFFFF',
-  },
-  locationEmoji: {
-    fontSize: 32,
+    fontSize: 36,
+    lineHeight: FILTER_CHIP_ICON_SLOT,
+    textAlign: 'center',
+    ...Platform.select({
+      android: { includeFontPadding: false },
+      default: {},
+    }),
   },
   filterText: {
     fontSize: 12,
-    fontFamily: 'Helvetica Neue',
+    fontFamily: 'WorkSans-Medium',
     color: '#FFFFFF',
     textAlign: 'center',
     lineHeight: 14,
@@ -409,11 +521,6 @@ const styles = StyleSheet.create({
     height: 40,
     zIndex: 1,
   },
-  sliderThumb: {
-    backgroundColor: '#FFFFFF',
-    width: 24,
-    height: 24,
-  },
   sliderLabels: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -445,7 +552,7 @@ const styles = StyleSheet.create({
   },
   applyButtonText: {
     fontSize: 16,
-    fontFamily: 'Helvetica Neue',
+    fontFamily: 'WorkSans-SemiBold',
     color: '#000000',
   },
 });

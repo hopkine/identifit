@@ -10,6 +10,7 @@ import {
   Alert,
   ActionSheetIOS,
   Platform,
+  type ImageSourcePropType,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Plus, Calendar, ChevronRight } from 'lucide-react-native';
@@ -27,11 +28,15 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useOOTD } from '@/hooks/useOOTD';
+import { calculateOOTDStreak } from '@/utils/ootdStreak';
 import { currentUser } from '@/data/ootd';
+import type { OOTD } from '@/types/ootd';
 import { LAYOUT, constrainedWidth } from '@/constants/layout';
+import { BETA_HOME_CARD_3D } from '@/constants/beta';
 import StreakIcon from '@/components/StreakIcon';
 import StarIcon from '@/components/StarIcon';
 import ClosetIcon from '@/components/ClosetIcon';
+import OutfitWeekSlotCutout from '@/components/OutfitWeekSlotCutout';
 
 /** Outfit-of-the-week strip — matches design reference proportions (~1 : 3.7) */
 const OUTFIT_SLOT_WIDTH = 56;
@@ -43,6 +48,12 @@ const OUTFIT_LABEL_STACK_HEIGHT = 64;
 /** Corner decoration icons on stat cards (Streak + Top Styles) */
 const STAT_CARD_DECOR_ICON_WIDTH = 46;
 const STAT_CARD_DECOR_ICON_HEIGHT = 70;
+
+function ootdSlotImageSource(ootd: OOTD | undefined): ImageSourcePropType {
+  const raw = ootd?.cutoutImageUri ?? ootd?.imageUri;
+  if (raw == null) return { uri: '' };
+  return typeof raw === 'string' ? { uri: raw } : raw;
+}
 
 function formatOutfitWeekRange(
   days: { dateString: string }[]
@@ -115,8 +126,8 @@ export default function HomeScreen() {
   const pickImageFromLibrary = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [3, 4],
+      // iOS crop UI is always square when allowsEditing is true; use full frame and crop in UI if needed.
+      allowsEditing: false,
       quality: 1,
     });
 
@@ -299,48 +310,7 @@ export default function HomeScreen() {
 
   const outfitDays = generateOutfitDays();
 
-  // Calculate OOTD streak
-  const calculateOOTDStreak = () => {
-    if (userOOTDs.length === 0) return 0;
-
-    // Sort OOTDs by date (most recent first)
-    const sortedOOTDs = [...userOOTDs].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-
-    const today = new Date();
-    let streak = 0;
-    let currentDate = new Date(today);
-
-    // Check each day going backwards from today
-    for (let i = 0; i < 365; i++) {
-      // Max check 1 year
-      const dateString = currentDate.toISOString().split('T')[0];
-      const hasOOTDForDate = sortedOOTDs.some(
-        (ootd) => ootd.date === dateString
-      );
-
-      if (hasOOTDForDate) {
-        streak++;
-      } else {
-        // If we haven't found any OOTDs yet, keep looking (maybe they started yesterday)
-        if (streak === 0 && i === 0) {
-          // Today doesn't have an OOTD, check yesterday
-          currentDate.setDate(currentDate.getDate() - 1);
-          continue;
-        }
-        // Break the streak if we find a day without an OOTD
-        break;
-      }
-
-      // Move to previous day
-      currentDate.setDate(currentDate.getDate() - 1);
-    }
-
-    return streak;
-  };
-
-  const currentStreak = calculateOOTDStreak();
+  const currentStreak = calculateOOTDStreak(userOOTDs);
 
   // Calculate items worn this month
   const calculateItemsWornThisMonth = () => {
@@ -366,6 +336,146 @@ export default function HomeScreen() {
 
   const topStyles = getTopStyles(3);
 
+  const streakCardBody = (
+    <>
+      <View style={styles.streakCardDecoration} pointerEvents="none">
+        <StreakIcon
+          width={STAT_CARD_DECOR_ICON_WIDTH}
+          height={STAT_CARD_DECOR_ICON_HEIGHT}
+        />
+      </View>
+      <View style={styles.dayStreakTextBlock}>
+        <Text style={styles.statNumber}>{currentStreak}</Text>
+        <Text style={styles.statLabel}>day OOTD{'\n'}streak</Text>
+      </View>
+    </>
+  );
+
+  const topStylesCardBody = (
+    <>
+      <View style={styles.topStylesCardDecoration} pointerEvents="none">
+        <StarIcon
+          width={STAT_CARD_DECOR_ICON_WIDTH}
+          height={STAT_CARD_DECOR_ICON_HEIGHT}
+        />
+      </View>
+      <View style={styles.topStylesTextBlock}>
+        <Text style={styles.statTitle}>My Top Styles</Text>
+        {topStyles.length > 0 ? (
+          topStyles.map((style, index) => (
+            <Text key={style} style={styles.styleItem}>
+              {index + 1}. {style}
+            </Text>
+          ))
+        ) : (
+          <Text style={styles.styleItem}>No styles yet</Text>
+        )}
+      </View>
+    </>
+  );
+
+  const progressCardBody = (
+    <>
+      <View style={styles.progressCardDecoration} pointerEvents="none">
+        <ClosetIcon
+          width={STAT_CARD_DECOR_ICON_WIDTH}
+          height={STAT_CARD_DECOR_ICON_HEIGHT}
+        />
+      </View>
+      <View style={styles.progressCardInner}>
+        <Text style={styles.progressNumber}>{closetWornPercent}%</Text>
+        <Text style={styles.progressLabel}>
+          of your{'\n'}closet worn{'\n'}this month
+        </Text>
+      </View>
+    </>
+  );
+
+  const outfitWeekSectionInner = (
+    <>
+      <View style={styles.sectionHeader}>
+        <View>
+          <Text style={styles.sectionTitle}>
+            Outfit of the Week
+          </Text>
+          <Text style={styles.sectionDate}>
+            {formatOutfitWeekRange(outfitDays)}
+          </Text>
+        </View>
+        <TouchableOpacity style={styles.calendarButton}>
+          <Calendar size={18} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.calendarRow}>
+        <ScrollView
+          ref={calendarScrollRef}
+          horizontal
+          nestedScrollEnabled
+          showsHorizontalScrollIndicator={false}
+          style={styles.calendarScroll}
+          contentContainerStyle={styles.calendarScrollContent}
+        >
+          {outfitDays.map((day, index) => (
+            <View key={index} style={styles.dayContainer}>
+              <View style={styles.dayIndicatorContainer}>
+                {day.isToday && <View style={styles.activeDayDot} />}
+              </View>
+
+              <Text
+                style={[
+                  styles.dayNumber,
+                  day.isToday && styles.currentDayNumber,
+                ]}
+              >
+                {day.date}
+              </Text>
+              <Text
+                style={[
+                  styles.dayName,
+                  day.isToday && styles.currentDayName,
+                ]}
+              >
+                {day.day}
+              </Text>
+
+              {day.hasOutfit ? (
+                <TouchableOpacity
+                  style={styles.outfitImageContainer}
+                  onLongPress={() => handleLongPressOOTD(day)}
+                  delayLongPress={500}
+                  activeOpacity={0.8}
+                >
+                  <OutfitWeekSlotCutout source={ootdSlotImageSource(day.ootd)} />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity
+                  style={styles.addOutfitButton}
+                  onPress={handleAddOutfit}
+                  activeOpacity={0.85}
+                >
+                  <View style={styles.addOutfitCircle}>
+                    <Plus size={11} color="#1a1a1a" strokeWidth={2} />
+                  </View>
+                </TouchableOpacity>
+              )}
+            </View>
+          ))}
+        </ScrollView>
+        <TouchableOpacity
+          style={styles.calendarChevron}
+          onPress={() =>
+            calendarScrollRef.current?.scrollToEnd({ animated: true })
+          }
+          hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
+          accessibilityLabel="Scroll outfits"
+        >
+          <ChevronRight size={22} color="#B3C8FF" strokeWidth={2} />
+        </TouchableOpacity>
+      </View>
+    </>
+  );
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
@@ -378,64 +488,48 @@ export default function HomeScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.greeting}>
-            Good Morning {currentUser.name.split(' ')[0]}!
+          <Text style={styles.greetingKicker}>Good morning</Text>
+          <Text style={styles.greetingDisplayName}>
+            {currentUser.name.split(' ')[0]}
           </Text>
-          <Text style={styles.subtitle}>Keep your streaks going strong</Text>
         </View>
 
-        {/* Statistics Cards */}
+        {/* Statistics Cards — 3D shells gated by BETA_HOME_CARD_3D */}
         <View style={styles.statsContainer}>
+          {BETA_HOME_CARD_3D && (
+            <View style={styles.betaHomeRow}>
+              <View style={styles.betaPill}>
+                <Text style={styles.betaPillText}>Beta · elevated cards</Text>
+              </View>
+            </View>
+          )}
           <View style={styles.statsRow}>
-            <View style={styles.dayStreakCard}>
-              <View style={styles.streakCardDecoration} pointerEvents="none">
-                <StreakIcon
-                  width={STAT_CARD_DECOR_ICON_WIDTH}
-                  height={STAT_CARD_DECOR_ICON_HEIGHT}
-                />
+            {BETA_HOME_CARD_3D ? (
+              <View style={styles.dayStreakCardElevated}>
+                <View style={styles.dayStreakCard}>{streakCardBody}</View>
               </View>
-              <View style={styles.dayStreakTextBlock}>
-                <Text style={styles.statNumber}>{currentStreak}</Text>
-                <Text style={styles.statLabel}>day OOTD{'\n'}streak</Text>
-              </View>
-            </View>
+            ) : (
+              <View style={styles.dayStreakCardFlat}>{streakCardBody}</View>
+            )}
 
-            <View style={styles.topStylesCard}>
-              <View style={styles.topStylesCardDecoration} pointerEvents="none">
-                <StarIcon
-                  width={STAT_CARD_DECOR_ICON_WIDTH}
-                  height={STAT_CARD_DECOR_ICON_HEIGHT}
-                />
+            {BETA_HOME_CARD_3D ? (
+              <View style={styles.topStylesCardElevated}>
+                <View style={styles.topStylesCardFace}>
+                  {topStylesCardBody}
+                </View>
               </View>
-              <View style={styles.topStylesTextBlock}>
-                <Text style={styles.statTitle}>My Top Styles</Text>
-                {topStyles.length > 0 ? (
-                  topStyles.map((style, index) => (
-                    <Text key={style} style={styles.styleItem}>
-                      {index + 1}. {style}
-                    </Text>
-                  ))
-                ) : (
-                  <Text style={styles.styleItem}>No styles yet</Text>
-                )}
-              </View>
-            </View>
+            ) : (
+              <View style={styles.topStylesCardFlat}>{topStylesCardBody}</View>
+            )}
           </View>
 
-          <View style={styles.progressCard}>
-            <View style={styles.progressCardDecoration} pointerEvents="none">
-              <ClosetIcon
-                width={STAT_CARD_DECOR_ICON_WIDTH}
-                height={STAT_CARD_DECOR_ICON_HEIGHT}
-              />
+          {BETA_HOME_CARD_3D ? (
+            <View style={styles.progressCardElevated}>
+              <View style={styles.progressCard}>{progressCardBody}</View>
             </View>
-            <View style={styles.progressCardInner}>
-              <Text style={styles.progressNumber}>{closetWornPercent}%</Text>
-              <Text style={styles.progressLabel}>
-                of your{'\n'}closet worn{'\n'}this month
-              </Text>
-            </View>
-          </View>
+          ) : (
+            <View style={styles.progressCardFlat}>{progressCardBody}</View>
+          )}
         </View>
 
         <View style={styles.pageIndicator}>
@@ -443,98 +537,22 @@ export default function HomeScreen() {
           <View style={[styles.dot, styles.activeDot]} />
         </View>
 
-        {/* Outfit of the Week — closed card */}
-        <View style={styles.outfitSectionWrapper}>
-          <View style={styles.outfitSectionInner}>
-          <View style={styles.sectionHeader}>
-            <View>
-              <Text style={styles.sectionTitle}>
-                {currentUser.name.split(' ')[0]}'s Outfit of the Week
-              </Text>
-              <Text style={styles.sectionDate}>
-                {formatOutfitWeekRange(outfitDays)}
-              </Text>
+        {/* Outfit of the Week */}
+        {BETA_HOME_CARD_3D ? (
+          <View style={styles.outfitSectionElevated}>
+            <View style={styles.outfitSectionFace}>
+              <View style={styles.outfitSectionInner}>
+                {outfitWeekSectionInner}
+              </View>
             </View>
-            <TouchableOpacity style={styles.calendarButton}>
-              <Calendar size={18} color="#FFFFFF" />
-            </TouchableOpacity>
           </View>
-
-          <View style={styles.calendarRow}>
-            <ScrollView
-              ref={calendarScrollRef}
-              horizontal
-              nestedScrollEnabled
-              showsHorizontalScrollIndicator={false}
-              style={styles.calendarScroll}
-              contentContainerStyle={styles.calendarScrollContent}
-            >
-              {outfitDays.map((day, index) => (
-                <View key={index} style={styles.dayContainer}>
-                  <View style={styles.dayIndicatorContainer}>
-                    {day.isToday && <View style={styles.activeDayDot} />}
-                  </View>
-
-                  <Text
-                    style={[
-                      styles.dayNumber,
-                      day.isToday && styles.currentDayNumber,
-                    ]}
-                  >
-                    {day.date}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.dayName,
-                      day.isToday && styles.currentDayName,
-                    ]}
-                  >
-                    {day.day}
-                  </Text>
-
-                  {day.hasOutfit ? (
-                    <TouchableOpacity
-                      style={styles.outfitImageContainer}
-                      onLongPress={() => handleLongPressOOTD(day)}
-                      delayLongPress={500}
-                      activeOpacity={0.8}
-                    >
-                      <Image
-                        source={
-                          typeof day.ootd?.imageUri === 'string'
-                            ? { uri: day.ootd.imageUri }
-                            : day.ootd?.imageUri
-                        }
-                        style={styles.backgroundImage}
-                      />
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      style={styles.addOutfitButton}
-                      onPress={handleAddOutfit}
-                      activeOpacity={0.85}
-                    >
-                      <View style={styles.addOutfitCircle}>
-                        <Plus size={18} color="#1a1a1a" strokeWidth={2.5} />
-                      </View>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              ))}
-            </ScrollView>
-            <TouchableOpacity
-              style={styles.calendarChevron}
-              onPress={() =>
-                calendarScrollRef.current?.scrollToEnd({ animated: true })
-              }
-              hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
-              accessibilityLabel="Scroll outfits"
-            >
-              <ChevronRight size={22} color="#B3C8FF" strokeWidth={2} />
-            </TouchableOpacity>
+        ) : (
+          <View style={styles.outfitSectionWrapper}>
+            <View style={styles.outfitSectionInner}>
+              {outfitWeekSectionInner}
+            </View>
           </View>
-          </View>
-        </View>
+        )}
 
         {/* Bottom spoiler — scroll to reveal */}
         <View style={styles.spoilerFooter}>
@@ -574,23 +592,55 @@ const styles = StyleSheet.create({
     paddingBottom: 28,
   },
   header: {
-    marginBottom: 24,
+    marginBottom: 26,
     paddingHorizontal: LAYOUT.paddingHorizontal,
+    paddingTop: 4,
   },
-  greeting: {
-    fontSize: 14,
-    fontFamily: 'Helvetica Neue',
-    color: '#C0D1FF',
+  greetingKicker: {
+    fontSize: 11,
+    fontFamily: 'WorkSans-SemiBold',
+    color: 'rgba(192, 209, 255, 0.88)',
+    letterSpacing: 2.4,
+    textTransform: 'uppercase',
     marginBottom: 8,
   },
+  greetingDisplayName: {
+    fontSize: 36,
+    fontFamily: 'Caladea-Bold',
+    color: '#F8FAFC',
+    letterSpacing: -0.8,
+    lineHeight: 40,
+    marginBottom: 14,
+  },
   subtitle: {
-    fontSize: 25,
-    fontFamily: 'Caladea-Regular',
-    color: '#ffffff',
+    fontSize: 15,
+    fontFamily: 'WorkSans-Regular',
+    color: 'rgba(255, 255, 255, 0.78)',
+    lineHeight: 22,
+    letterSpacing: 0.15,
+    maxWidth: 320,
   },
   statsContainer: {
     marginBottom: 16,
     paddingHorizontal: LAYOUT.paddingHorizontal,
+  },
+  betaHomeRow: {
+    marginBottom: 10,
+  },
+  betaPill: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    backgroundColor: 'rgba(192, 209, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(192, 209, 255, 0.28)',
+  },
+  betaPillText: {
+    fontSize: 11,
+    fontFamily: 'WorkSans-Medium',
+    color: '#B3C8FF',
+    letterSpacing: 0.35,
   },
   statsRow: {
     flexDirection: 'row',
@@ -604,7 +654,7 @@ const styles = StyleSheet.create({
     padding: 20,
     position: 'relative',
   },
-  dayStreakCard: {
+  dayStreakCardFlat: {
     flex: 1,
     backgroundColor: 'rgba(63, 63, 63, 0.25)',
     borderRadius: 10,
@@ -613,6 +663,32 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(244, 173, 179, 0.25)',
+  },
+  dayStreakCardElevated: {
+    flex: 1,
+    borderRadius: 12,
+    backgroundColor: 'rgba(28, 28, 30, 0.6)',
+    shadowColor: '#1a0a10',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.55,
+    shadowRadius: 16,
+    elevation: 14,
+  },
+  dayStreakCard: {
+    flex: 1,
+    backgroundColor: 'rgba(72, 68, 78, 0.42)',
+    borderRadius: 11,
+    padding: 18,
+    position: 'relative',
+    overflow: 'hidden',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderBottomWidth: 2,
+    borderTopColor: 'rgba(255, 255, 255, 0.16)',
+    borderLeftColor: 'rgba(255, 255, 255, 0.09)',
+    borderRightColor: 'rgba(0, 0, 0, 0.28)',
+    borderBottomColor: 'rgba(0, 0, 0, 0.42)',
   },
   streakCardDecoration: {
     position: 'absolute',
@@ -625,7 +701,7 @@ const styles = StyleSheet.create({
   dayStreakTextBlock: {
     zIndex: 1,
   },
-  topStylesCard: {
+  topStylesCardFlat: {
     flex: 1,
     backgroundColor: 'rgba(63, 63, 63, 0.25)',
     borderRadius: 10,
@@ -634,6 +710,32 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(235, 252, 183, 0.25)',
+  },
+  topStylesCardElevated: {
+    flex: 1,
+    borderRadius: 12,
+    backgroundColor: 'rgba(26, 28, 20, 0.65)',
+    shadowColor: '#121808',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.52,
+    shadowRadius: 16,
+    elevation: 14,
+  },
+  topStylesCardFace: {
+    flex: 1,
+    backgroundColor: 'rgba(56, 58, 44, 0.42)',
+    borderRadius: 11,
+    padding: 18,
+    position: 'relative',
+    overflow: 'hidden',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderBottomWidth: 2,
+    borderTopColor: 'rgba(235, 252, 183, 0.22)',
+    borderLeftColor: 'rgba(235, 252, 183, 0.11)',
+    borderRightColor: 'rgba(0, 0, 0, 0.28)',
+    borderBottomColor: 'rgba(0, 0, 0, 0.44)',
   },
   topStylesCardDecoration: {
     position: 'absolute',
@@ -653,20 +755,25 @@ const styles = StyleSheet.create({
   },
   statLabel: {
     fontSize: 12,
-    fontFamily: 'Helvetica Neue',
-    color: '#9CA3AF',
+    fontFamily: 'WorkSans-Regular',
+    color: '#A8B0BD',
     lineHeight: 18,
+    letterSpacing: 0.2,
   },
   statTitle: {
-    fontSize: 22,
+    fontSize: 21,
     color: '#EBFCB7',
     fontFamily: 'Caladea-Bold',
-    fontWeight: 'Bold',
+    fontWeight: 'bold',
+    letterSpacing: -0.3,
+    lineHeight: 26,
   },
   styleItem: {
     fontSize: 12,
-    fontFamily: 'Helvetica Neue',
-    color: '#9CA3AF',
+    fontFamily: 'WorkSans-Regular',
+    color: '#A8B0BD',
+    lineHeight: 17,
+    letterSpacing: 0.15,
   },
   iconImage: {
     width: 40,
@@ -675,7 +782,7 @@ const styles = StyleSheet.create({
     bottom: 20,
     right: 20,
   },
-  progressCard: {
+  progressCardFlat: {
     backgroundColor: 'rgba(63, 63, 63, 0.25)',
     borderRadius: 10,
     padding: 18,
@@ -683,6 +790,30 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(168, 198, 255, 0.25)',
+  },
+  progressCardElevated: {
+    borderRadius: 12,
+    backgroundColor: 'rgba(22, 26, 36, 0.65)',
+    shadowColor: '#050a18',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.5,
+    shadowRadius: 18,
+    elevation: 16,
+  },
+  progressCard: {
+    backgroundColor: 'rgba(58, 64, 82, 0.4)',
+    borderRadius: 11,
+    padding: 18,
+    position: 'relative',
+    overflow: 'hidden',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderBottomWidth: 2,
+    borderTopColor: 'rgba(179, 200, 255, 0.22)',
+    borderLeftColor: 'rgba(179, 200, 255, 0.1)',
+    borderRightColor: 'rgba(0, 0, 0, 0.3)',
+    borderBottomColor: 'rgba(0, 0, 0, 0.48)',
   },
   progressCardDecoration: {
     position: 'absolute',
@@ -707,9 +838,10 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 12,
-    fontFamily: 'Helvetica Neue',
-    color: '#9CA3AF',
+    fontFamily: 'WorkSans-Regular',
+    color: '#A8B0BD',
     lineHeight: 18,
+    letterSpacing: 0.15,
     flex: 1,
   },
   pageIndicator: {
@@ -738,6 +870,31 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(63, 63, 63, 0.25)',
     overflow: 'hidden',
   },
+  outfitSectionElevated: {
+    marginHorizontal: LAYOUT.paddingHorizontal,
+    marginTop: 4,
+    marginBottom: 12,
+    borderRadius: 12,
+    backgroundColor: 'rgba(22, 24, 18, 0.72)',
+    shadowColor: '#0a0c06',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.48,
+    shadowRadius: 18,
+    elevation: 16,
+  },
+  outfitSectionFace: {
+    borderRadius: 11,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(52, 54, 42, 0.4)',
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderBottomWidth: 2,
+    borderTopColor: 'rgba(235, 252, 183, 0.2)',
+    borderLeftColor: 'rgba(235, 252, 183, 0.1)',
+    borderRightColor: 'rgba(0, 0, 0, 0.3)',
+    borderBottomColor: 'rgba(0, 0, 0, 0.45)',
+  },
   outfitSectionInner: {
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -750,17 +907,18 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '400',
+    fontSize: 19,
     fontFamily: 'Caladea-Regular',
-    color: '#ffffff',
+    color: '#F8FAFC',
+    letterSpacing: -0.2,
+    lineHeight: 24,
   },
   sectionDate: {
-    marginTop: 6,
+    marginTop: 7,
     fontSize: 12,
-    fontWeight: '400',
-    fontFamily: 'Helvetica Neue',
-    color: '#B3C8FF',
+    fontFamily: 'WorkSans-Medium',
+    color: 'rgba(179, 200, 255, 0.95)',
+    letterSpacing: 0.4,
   },
   calendarButton: {
     width: 40,
@@ -806,16 +964,17 @@ const styles = StyleSheet.create({
   },
   dayNumber: {
     fontSize: 12,
-    fontWeight: '400',
-    fontFamily: 'Helvetica Neue',
-    color: '#ffffff',
+    fontFamily: 'WorkSans-Medium',
+    color: '#F1F5F9',
     marginBottom: 4,
+    letterSpacing: 0.2,
   },
   dayName: {
-    fontSize: 12,
-    fontFamily: 'Helvetica Neue',
-    color: 'rgba(255, 255, 255, 0.82)',
+    fontSize: 11,
+    fontFamily: 'WorkSans-Regular',
+    color: 'rgba(255, 255, 255, 0.75)',
     marginBottom: 10,
+    letterSpacing: 0.25,
   },
   currentDayNumber: {
     fontWeight: 'bold',
@@ -834,22 +993,8 @@ const styles = StyleSheet.create({
   outfitImageContainer: {
     width: OUTFIT_SLOT_WIDTH,
     height: OUTFIT_SLOT_HEIGHT,
-    borderRadius: 28,
-    overflow: 'hidden',
-    position: 'relative',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.92)',
-  },
-  backgroundImage: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  outfitImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   addOutfitButton: {
     width: OUTFIT_SLOT_WIDTH,
@@ -860,9 +1005,9 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(40, 40, 40, 0.5)',
   },
   addOutfitCircle: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     backgroundColor: '#B3C8FF',
     justifyContent: 'center',
     alignItems: 'center',
@@ -888,16 +1033,19 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   logoText: {
-    fontSize: 18,
+    fontSize: 19,
     fontFamily: 'Caladea-Regular',
-    color: '#C0D1FF',
-    opacity: 0.8,
-    marginBottom: 4,
+    color: '#D4DFF9',
+    letterSpacing: -0.2,
+    opacity: 0.88,
+    marginBottom: 5,
   },
   logoTagline: {
     fontSize: 12,
+    fontFamily: 'WorkSans-Regular',
     color: '#9CA3AF',
-    opacity: 0.7,
+    letterSpacing: 0.2,
+    opacity: 0.75,
   },
   cameraContainer: {
     flex: 1,

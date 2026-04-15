@@ -11,7 +11,6 @@ import { useFonts, Caladea_400Regular, Caladea_700Bold } from '@expo-google-font
 import { WorkSans_400Regular, WorkSans_500Medium, WorkSans_600SemiBold } from '@expo-google-fonts/work-sans';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
-import { useOOTD } from '@/hooks/useOOTD';
 import { currentUser } from '@/data/ootd';
 import { LAYOUT, constrainedWidth, SCREEN_HEIGHT } from '@/constants/layout';
 

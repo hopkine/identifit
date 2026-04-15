@@ -1,9 +1,11 @@
 import { Tabs } from 'expo-router';
 import { House, Compass, Bookmark, Shirt, User, Users } from 'lucide-react-native';
 import { LAYOUT } from '@/constants/layout';
+import { OOTDProvider } from '@/hooks/useOOTD';
 
 export default function TabLayout() {
   return (
+    <OOTDProvider>
     <Tabs
       screenOptions={{
         headerShown: false,
@@ -77,5 +79,6 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
+    </OOTDProvider>
   );
 }

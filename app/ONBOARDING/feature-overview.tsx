@@ -52,9 +52,9 @@ export default function FeatureOverview() {
   const opacityNativeDriver = Platform.OS !== 'web';
 
   const galleryImages = [
-    require('@/assets/images/onboarding assets/Frame 121075726.png'),
-    require('@/assets/images/onboarding assets/Frame 121075729.png'),
-    require('@/assets/images/onboarding assets/Frame 121075728.png'),
+    require('@/assets/images/onboarding-assets/Frame 121075726.png'),
+    require('@/assets/images/onboarding-assets/Frame 121075729.png'),
+    require('@/assets/images/onboarding-assets/Frame 121075728.png'),
   ];
 
   // Crossfade when slide changes
@@ -108,13 +108,13 @@ export default function FeatureOverview() {
       title: 'Recreate Inspirations',
       description:
         'Find similar pieces in your wardrobe to recreate outfit inspirations you love from social media and fashion magazines.',
-      image: require('@/assets/images/onboarding assets/Group 121075721.png'),
+      image: require('@/assets/images/onboarding-assets/Group 121075721.png'),
     },
     {
       title: 'Monthly Style Recap',
       description:
         'Review your style journey with monthly recaps showing your most-worn pieces, color preferences, and style evolution.',
-      image: require('@/assets/images/onboarding assets/Group 121075722.png'),
+      image: require('@/assets/images/onboarding-assets/Group 121075722.png'),
     },
   ];
 

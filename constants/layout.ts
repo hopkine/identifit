@@ -32,6 +32,16 @@ export const constrainedWidth = Math.min(
   SCREEN_WIDTH
 );
 
+/** Constrained column width for a given window width (use with useWindowDimensions). */
+export function getConstrainedWidth(windowWidth: number): number {
+  const safeW = windowWidth > 0 ? windowWidth : MOBILE_MAX_WIDTH;
+  const maxContent =
+    safeW >= DESKTOP_BREAKPOINT
+      ? LAYOUT.contentMaxWidthDesktop
+      : LAYOUT.contentMaxWidthMobile;
+  return Math.min(maxContent, safeW);
+}
+
 /** Full dimensions for inner container */
 export const getInnerContainerDimensions = () => {
   const { width: w, height: h } = Dimensions.get('window');

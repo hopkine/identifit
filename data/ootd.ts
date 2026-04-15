@@ -5,7 +5,6 @@ export const currentUser: User = {
   id: 'current-user',
   name: 'Jacqueline Flynn',
   username: 'jacqfly',
-  avatar: require('@/assets/images/image.png'),
   isOnline: true,
 };
 

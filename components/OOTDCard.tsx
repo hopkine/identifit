@@ -1,17 +1,19 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
   Image,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
-import { Heart, Clock, Lock } from 'lucide-react-native';
+import { Heart, Clock, Lock, User as UserIcon } from 'lucide-react-native';
 import { OOTD, User } from '@/types/ootd';
+import { LAYOUT, getConstrainedWidth } from '@/constants/layout';
+import { resolveUserAvatarSource } from '@/utils/userAvatar';
 
-const { width } = Dimensions.get('window');
-const cardWidth = (width - 60) / 2;
+/** Gap between the two columns in profile/social grids (parent uses space-between). */
+const GRID_COLUMN_GAP = 10;
 
 interface OOTDCardProps {
   ootd: OOTD;
@@ -28,6 +30,14 @@ export default function OOTDCard({
   onPress,
   showUser = true,
 }: OOTDCardProps) {
+  const { width: windowWidth } = useWindowDimensions();
+  const cardWidth = useMemo(() => {
+    const contentW = getConstrainedWidth(windowWidth);
+    const inner =
+      contentW - LAYOUT.paddingHorizontal * 2 - GRID_COLUMN_GAP;
+    return Math.max(130, inner / 2);
+  }, [windowWidth]);
+
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -37,6 +47,8 @@ export default function OOTDCard({
     if (diffInHours < 24) return `${diffInHours}h`;
     return `${Math.floor(diffInHours / 24)}d`;
   };
+
+  const avatarSource = resolveUserAvatarSource(user);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -76,7 +88,7 @@ export default function OOTDCard({
 
   return (
     <TouchableOpacity
-      style={styles.container}
+      style={[styles.container, { width: cardWidth }]}
       onPress={onPress}
       activeOpacity={0.8}
     >
@@ -85,10 +97,13 @@ export default function OOTDCard({
         <View style={styles.userHeader}>
           <View style={styles.userInfo}>
             <View style={styles.avatarContainer}>
-              <Image 
-                source={typeof user.avatar === 'string' ? { uri: user.avatar } : require('@/assets/images/image.png')} 
-                style={styles.avatar} 
-              />
+              {avatarSource ? (
+                <Image source={avatarSource} style={styles.avatar} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <UserIcon size={18} color="#AEAEB2" strokeWidth={1.75} />
+                </View>
+              )}
               {user.isOnline && <View style={styles.onlineIndicator} />}
             </View>
             <Text style={styles.userName}>{user.name}</Text>
@@ -158,7 +173,6 @@ export default function OOTDCard({
 
 const styles = StyleSheet.create({
   container: {
-    width: cardWidth,
     backgroundColor: '#2C2C2E',
     borderRadius: 16,
     overflow: 'hidden',
@@ -185,6 +199,14 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
+  },
+  avatarPlaceholder: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#3A3A3C',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   onlineIndicator: {
     position: 'absolute',

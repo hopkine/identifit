@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -7,147 +7,223 @@ import {
   TouchableOpacity,
   Image,
   ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import {
   ChartBar as BarChart3,
   UserPlus,
+  User,
   Settings,
-  Users,
   Lock,
 } from 'lucide-react-native';
+import { useFonts, Caladea_400Regular } from '@expo-google-fonts/caladea';
 import { useOOTD } from '@/hooks/useOOTD';
 import { currentUser } from '@/data/ootd';
-import OOTDCard from '@/components/OOTDCard';
+import { calculateOOTDStreak } from '@/utils/ootdStreak';
+import { resolveUserAvatarSource } from '@/utils/userAvatar';
 import FlameIcon from '@/components/FlameIcon';
-import { LAYOUT, constrainedWidth } from '@/constants/layout';
+import { LAYOUT, constrainedWidth, getConstrainedWidth } from '@/constants/layout';
+import type { OOTD } from '@/types/ootd';
+
+const GRID_GAP = 6;
+const PHOTO_CORNER_RADIUS = 10;
+
+function ProfilePostTile({
+  ootd,
+  cellWidth,
+  gapAfter,
+  marginBottom,
+}: {
+  ootd: OOTD;
+  cellWidth: number;
+  gapAfter: number;
+  marginBottom: number;
+}) {
+  const source =
+    typeof ootd.imageUri === 'string'
+      ? { uri: ootd.imageUri }
+      : ootd.imageUri;
+
+  return (
+    <TouchableOpacity
+      style={[
+        styles.tileOuter,
+        {
+          width: cellWidth,
+          marginRight: gapAfter,
+          marginBottom,
+          borderRadius: PHOTO_CORNER_RADIUS,
+        },
+      ]}
+      activeOpacity={0.92}
+    >
+      <View
+        style={[
+          styles.tileFrame,
+          {
+            width: cellWidth,
+            aspectRatio: 3 / 4,
+            borderRadius: PHOTO_CORNER_RADIUS,
+          },
+        ]}
+      >
+        <Image
+          source={source}
+          style={styles.tileImage}
+          resizeMode="cover"
+        />
+        {ootd.isPrivate && (
+          <View style={styles.privateCorner}>
+            <Lock size={11} color="#ffffff" />
+          </View>
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+}
 
 export default function ProfileScreen() {
   const [activeTab, setActiveTab] = useState<'posts' | 'saved'>('posts');
-  const { userOOTDs, toggleOOTDLike } = useOOTD();
+  const { userOOTDs } = useOOTD();
+  const ootdStreak = calculateOOTDStreak(userOOTDs);
+  const { width: windowWidth } = useWindowDimensions();
+  const profileAvatarSource = resolveUserAvatarSource(currentUser);
+
+  const [fontsLoaded] = useFonts({
+    'Caladea-Regular': Caladea_400Regular,
+  });
+
+  const { cellWidth } = useMemo(() => {
+    const contentW = getConstrainedWidth(windowWidth);
+    const inner = contentW - LAYOUT.paddingHorizontal * 2;
+    const w = (inner - GRID_GAP) / 2;
+    return { cellWidth: Math.max(120, w) };
+  }, [windowWidth]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.innerWrapper}>
-      <ScrollView
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Top Navigation */}
-        <View style={styles.topNav}>
-          <TouchableOpacity style={styles.navButton}>
-            <BarChart3 size={24} color="#ffffff" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navButton}>
-            <UserPlus size={24} color="#ffffff" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.navButton}>
-            <Settings size={24} color="#ffffff" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Profile Section */}
-        <View style={styles.profileSection}>
-          {/* Profile Picture */}
-          <View style={styles.profilePictureContainer}>
-            <Image
-              source={require('@/assets/images/image.png')}
-              style={styles.profilePicture}
-            />
+        <ScrollView
+          style={styles.scrollView}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.topNav}>
+            <TouchableOpacity style={styles.navButton}>
+              <BarChart3 size={24} color="#ffffff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.navButton}>
+              <UserPlus size={24} color="#ffffff" />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.navButton}>
+              <Settings size={24} color="#ffffff" />
+            </TouchableOpacity>
           </View>
 
-          {/* Name */}
-          <Text style={styles.name}>{currentUser.name}</Text>
-
-          {/* Stats */}
-          <View style={styles.statsContainer}>
-            <Text style={styles.username}>@jacqfly</Text>
-            <Text style={styles.separator}>.</Text>
-            <View style={styles.statItem}>
-              <Text style={styles.statText}>13 friends</Text>
+          <View style={styles.profileSection}>
+            <View style={styles.profilePictureContainer}>
+              {profileAvatarSource ? (
+                <Image
+                  source={profileAvatarSource}
+                  style={styles.profilePicture}
+                />
+              ) : (
+                <View style={styles.profileAvatarPlaceholder}>
+                  <User size={44} color="#AEAEB2" strokeWidth={1.75} />
+                </View>
+              )}
             </View>
-            <Text style={styles.separator}>.</Text>
-            <View style={styles.statItem}>
-              <FlameIcon width={16} height={22} />
-              <Text style={styles.streakNumber}>23</Text>
+
+            <Text style={styles.name}>{currentUser.name}</Text>
+
+            <View style={styles.statsContainer}>
+              <Text style={styles.statsPart}>@{currentUser.username}</Text>
+              <Text style={styles.statsSep}> · </Text>
+              <Text style={styles.statsPart}>13 friends</Text>
+              <Text style={styles.statsSep}> · </Text>
+              <View style={styles.streakInline}>
+                <FlameIcon width={16} height={22} />
+                <Text style={styles.streakNumber}>{ootdStreak}</Text>
+              </View>
             </View>
           </View>
-        </View>
 
-        {/* Tab Navigation */}
-        <View style={styles.tabNavigation}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'posts' && styles.activeTab]}
-            onPress={() => setActiveTab('posts')}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === 'posts' && styles.activeTabText,
-              ]}
+          <View style={styles.tabNavigation}>
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'posts' && styles.activeTab]}
+              onPress={() => setActiveTab('posts')}
             >
-              Posts
-            </Text>
-            {activeTab === 'posts' && (
-              <View style={styles.activeTabIndicator} />
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'saved' && styles.activeTab]}
-            onPress={() => setActiveTab('saved')}
-          >
-            <View style={styles.savedTabContent}>
               <Text
                 style={[
                   styles.tabText,
-                  activeTab === 'saved' && styles.activeTabText,
+                  activeTab === 'posts' && styles.activeTabText,
                 ]}
               >
-                Saved Posts
+                Posts
               </Text>
-              <Lock
-                size={16}
-                color={activeTab === 'saved' ? '#ffffff' : '#757575'}
-              />
-            </View>
-            {activeTab === 'saved' && (
-              <View style={styles.activeTabIndicator} />
-            )}
-          </TouchableOpacity>
-        </View>
+              {activeTab === 'posts' && (
+                <View style={styles.activeTabIndicator} />
+              )}
+            </TouchableOpacity>
 
-        {/* Content Grid */}
-        <View style={styles.contentContainer}>
-          {activeTab === 'posts' && (
-            <View style={styles.ootdsGrid}>
-              {userOOTDs.map((ootd) => (
-                <OOTDCard
-                  key={ootd.id}
-                  ootd={ootd}
-                  user={currentUser}
-                  onLike={toggleOOTDLike}
-                  showUser={false}
+            <TouchableOpacity
+              style={[styles.tab, activeTab === 'saved' && styles.activeTab]}
+              onPress={() => setActiveTab('saved')}
+            >
+              <View style={styles.savedTabContent}>
+                <Text
+                  style={[
+                    styles.tabText,
+                    activeTab === 'saved' && styles.activeTabText,
+                  ]}
+                >
+                  Saved Posts
+                </Text>
+                <Lock
+                  size={16}
+                  color={activeTab === 'saved' ? '#C0D1FF' : '#757575'}
                 />
-              ))}
-            </View>
-          )}
+              </View>
+              {activeTab === 'saved' && (
+                <View style={styles.activeTabIndicator} />
+              )}
+            </TouchableOpacity>
+          </View>
 
-          {activeTab === 'saved' && (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No saved posts yet</Text>
-            </View>
-          )}
+          <View style={styles.contentContainer}>
+            {activeTab === 'posts' && userOOTDs.length > 0 && (
+              <View style={styles.ootdsGrid}>
+                {userOOTDs.map((ootd, index) => (
+                  <ProfilePostTile
+                    key={ootd.id}
+                    ootd={ootd}
+                    cellWidth={cellWidth}
+                    gapAfter={index % 2 === 0 ? GRID_GAP : 0}
+                    marginBottom={GRID_GAP}
+                  />
+                ))}
+              </View>
+            )}
 
-          {activeTab === 'posts' && userOOTDs.length === 0 && (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>No OOTDs yet</Text>
-              <Text style={styles.emptyStateSubtext}>
-                Start sharing your daily outfits!
-              </Text>
-            </View>
-          )}
-        </View>
-      </ScrollView>
+            {activeTab === 'saved' && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>No saved posts yet</Text>
+              </View>
+            )}
+
+            {activeTab === 'posts' && userOOTDs.length === 0 && (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyStateText}>No OOTDs yet</Text>
+                <Text style={styles.emptyStateSubtext}>
+                  Start sharing your daily outfits!
+                </Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
       </View>
     </SafeAreaView>
   );
@@ -172,9 +248,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
     alignItems: 'center',
     paddingHorizontal: LAYOUT.paddingHorizontal,
-    paddingTop: 16,
-    paddingBottom: 16,
-    gap: 23,
+    paddingTop: 12,
+    paddingBottom: 8,
+    gap: 20,
   },
   navButton: {
     width: 44,
@@ -185,54 +261,61 @@ const styles = StyleSheet.create({
   },
   profileSection: {
     alignItems: 'center',
-    paddingBottom: 30,
+    paddingBottom: 20,
   },
   profilePictureContainer: {
-    width: 89,
-    height: 89,
-    borderRadius: 64,
+    width: 104,
+    height: 104,
+    borderRadius: 52,
     overflow: 'hidden',
-    marginBottom: 23,
-    backgroundColor: '#ffffff',
+    marginBottom: 16,
+    backgroundColor: '#2C2C2E',
   },
   profilePicture: {
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
   },
+  profileAvatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#3A3A3C',
+  },
   name: {
     color: '#ffffff',
-    fontSize: 20,
-    marginBottom: 16,
+    fontSize: 22,
+    marginBottom: 10,
     fontFamily: 'Caladea-Regular',
   },
   statsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5.5,
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    paddingHorizontal: 16,
   },
-  username: {
-    color: '#ffffff',
+  statsPart: {
+    color: '#E5E7EB',
     fontSize: 15,
+    fontFamily: 'System',
   },
-  separator: {
-    color: '#ffffff',
+  statsSep: {
+    color: '#9CA3AF',
     fontSize: 15,
-    marginBottom: 10,
+    fontFamily: 'System',
   },
-  statItem: {
+  streakInline: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
   },
-  statText: {
-    color: '#ffffff',
-    fontSize: 15,
-  },
   streakNumber: {
-    color: '#757EFA',
+    color: '#A5B4FC',
     fontSize: 15,
-    fontWeight: 'bold',
+    fontFamily: 'System',
+    fontWeight: '700',
   },
   tabNavigation: {
     flexDirection: 'row',
@@ -242,18 +325,16 @@ const styles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    paddingVertical: 16,
+    paddingVertical: 14,
     alignItems: 'center',
     position: 'relative',
   },
-  activeTab: {
-    // Additional styling for active tab if needed
-  },
+  activeTab: {},
   tabText: {
     fontSize: 14,
     fontWeight: '400',
     color: '#757575',
-    fontFamily: 'Helvetica Neue',
+    fontFamily: 'System',
   },
   activeTabText: {
     color: '#C0D1FF',
@@ -262,7 +343,7 @@ const styles = StyleSheet.create({
   savedTabContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
   },
   activeTabIndicator: {
     position: 'absolute',
@@ -275,12 +356,35 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     paddingHorizontal: LAYOUT.paddingHorizontal,
-    paddingTop: 16,
+    paddingTop: 12,
+    paddingBottom: 24,
   },
   ootdsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+  },
+  tileOuter: {
+    overflow: 'hidden',
+    backgroundColor: '#1f1f22',
+  },
+  tileFrame: {
+    overflow: 'hidden',
+    backgroundColor: '#2C2C2E',
+  },
+  tileImage: {
+    width: '100%',
+    height: '100%',
+  },
+  privateCorner: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   emptyState: {
     flex: 1,

@@ -17,6 +17,7 @@ export interface User {
   id: string;
   name: string;
   username: string;
-  avatar: string | any;
+  /** Remote URL, `require(...)`, or omit for default placeholder */
+  avatar?: string | any;
   isOnline?: boolean;
 }

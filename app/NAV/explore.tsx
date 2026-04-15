@@ -9,7 +9,7 @@ import {
   TextInput,
   Image,
 } from 'react-native';
-import { Search, Sparkles, Settings } from 'lucide-react-native';
+import { Search, SlidersHorizontal, Plus } from 'lucide-react-native';
 import {
   useFonts,
   Caladea_400Regular,
@@ -20,7 +20,7 @@ import {
   WorkSans_500Medium,
   WorkSans_600SemiBold,
 } from '@expo-google-fonts/work-sans';
-import FilterSortSheet from '@/components/FilterSortSheet';
+import FilterSortSheet, { type FilterState } from '@/components/FilterSortSheet';
 import { LAYOUT, constrainedWidth } from '@/constants/layout';
 
 // Outfit images from recs folder
@@ -35,10 +35,18 @@ const outfitImages = [
   require('@/assets/images/recs/_ (4) 1 (1).png'),
 ];
 
+const nearMeOutfitImages = [
+  require('@/assets/images/near-me/01.png'),
+  require('@/assets/images/near-me/02.png'),
+  require('@/assets/images/near-me/03.png'),
+  require('@/assets/images/near-me/04.png'),
+];
+
 export default function ExploreScreen() {
   const [activeTab, setActiveTab] = useState<'forYou' | 'friends'>('forYou');
   const [searchText, setSearchText] = useState('');
   const [showFilterSheet, setShowFilterSheet] = useState(false);
+  const [appliedShowNearMe, setAppliedShowNearMe] = useState(false);
 
   const [fontsLoaded] = useFonts({
     'Caladea-Regular': Caladea_400Regular,
@@ -48,9 +56,8 @@ export default function ExploreScreen() {
     'WorkSans-SemiBold': WorkSans_600SemiBold,
   });
 
-  const handleApplyFilters = (filters: any) => {
-    console.log('Applied filters:', filters);
-    // Handle filter application logic here
+  const handleApplyFilters = (filters: FilterState) => {
+    setAppliedShowNearMe(filters.showNearMe);
   };
 
   if (!fontsLoaded) {
@@ -61,7 +68,9 @@ export default function ExploreScreen() {
     const leftColumn = [];
     const rightColumn = [];
 
-    outfitImages.forEach((image, index) => {
+    const gridImages = appliedShowNearMe ? nearMeOutfitImages : outfitImages;
+
+    gridImages.forEach((image, index) => {
       const height = index % 3 === 0 ? 280 : index % 2 === 0 ? 320 : 240;
       const imageComponent = (
         <TouchableOpacity
@@ -91,9 +100,17 @@ export default function ExploreScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.innerWrapper}>
-      {/* Header */}
+      {/* Header — filter control lives here so it isn’t clipped on narrow iOS widths */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Explore</Text>
+        <TouchableOpacity
+          style={styles.headerFilterButton}
+          onPress={() => setShowFilterSheet(true)}
+          activeOpacity={0.75}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <SlidersHorizontal size={22} color="#FFFFFF" strokeWidth={2} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
@@ -141,32 +158,20 @@ export default function ExploreScreen() {
             </Text>
           </TouchableOpacity>
 
-          <View style={styles.sparklesContainer}>
+          <View style={[styles.tab, styles.sparklesPill]}>
             <Text style={styles.sparkleEmoji}>✨✨✨</Text>
           </View>
-
-          <TouchableOpacity
-            style={styles.settingsButton}
-            onPress={() => setShowFilterSheet(true)}
-          >
-            <Settings size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        </View>
-
-        {/* Subtitle */}
-        <View style={styles.subtitleContainer}>
-          <Text style={styles.subtitle}>
-            🔍 Discover Styles That Match Your Closet
-          </Text>
         </View>
 
         {/* Masonry Grid */}
         {renderMasonryGrid()}
       </ScrollView>
 
-      {/* Floating Add Button */}
-      <TouchableOpacity style={styles.floatingButton}>
-        <Text style={styles.floatingButtonText}>+</Text>
+      <TouchableOpacity
+        style={styles.floatingPlusFab}
+        activeOpacity={0.88}
+      >
+        <Plus size={30} color="#1a1a1a" strokeWidth={2.25} />
       </TouchableOpacity>
 
       {/* Filter Sheet */}
@@ -174,6 +179,8 @@ export default function ExploreScreen() {
         visible={showFilterSheet}
         onClose={() => setShowFilterSheet(false)}
         onApplyFilters={handleApplyFilters}
+        itemCountDefault={outfitImages.length}
+        itemCountNearMe={nearMeOutfitImages.length}
       />
       </View>
     </SafeAreaView>
@@ -192,6 +199,9 @@ const styles = StyleSheet.create({
     maxWidth: constrainedWidth,
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: LAYOUT.paddingHorizontal,
     paddingTop: 20,
     paddingBottom: 16,
@@ -200,6 +210,12 @@ const styles = StyleSheet.create({
     fontSize: 25,
     fontFamily: 'Caladea-Bold',
     color: '#FFFFFF',
+  },
+  headerFilterButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   content: {
     flex: 1,
@@ -246,28 +262,12 @@ const styles = StyleSheet.create({
   activeTabText: {
     color: '#000000',
   },
-  sparklesContainer: {
-    flexDirection: 'row',
-    gap: 4,
-    flex: 1,
+  sparklesPill: {
+    alignItems: 'center',
     justifyContent: 'center',
   },
   sparkleEmoji: {
     fontSize: 14,
-  },
-  settingsButton: {
-    padding: 8,
-  },
-  subtitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 24,
-    gap: 12,
-  },
-  subtitle: {
-    fontSize: 12,
-    fontFamily: 'Helvetica Neue',
-    color: '#9CA3AF',
   },
   masonryContainer: {
     flexDirection: 'row',
@@ -287,28 +287,20 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'cover',
   },
-  floatingButton: {
+  floatingPlusFab: {
     position: 'absolute',
-    bottom: 100,
+    bottom: 96,
     right: LAYOUT.paddingHorizontal,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: '#A8B3FF',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#B3C8FF',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  floatingButtonText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 12,
   },
 });
