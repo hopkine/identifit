@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,8 +7,10 @@ import {
   Image,
   Animated,
   Platform,
+  ActivityIndicator,
   useWindowDimensions,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowRight } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -18,22 +20,30 @@ import {
 } from '@expo-google-fonts/caladea';
 
 import { LAYOUT } from '@/constants/layout';
-import { onboardingScreenStyles as os } from '@/constants/onboardingScreens';
+import {
+  onboardingScreenStyles as os,
+  ONBOARDING_IN_FLOW_TOP as flowTop,
+} from '@/constants/onboardingScreens';
+import {
+  OUTFIT_GALLERY_IMAGES,
+  preloadOutfitGalleryImages,
+} from '@/constants/outfitGalleryAssets';
 
-const SLIDE_TRANSITION_DURATION = 280;
-const GALLERY_TRANSITION_DURATION = 400;
+const SLIDE_TRANSITION_DURATION = 160;
+/** Outfit-suggestions slide (index 1): no fade-in wait when landing on it. */
+const OUTFIT_SLIDE_ENTER_INSTANT = true;
+const GALLERY_AUTO_ADVANCE_MS = 1600;
 
 export default function FeatureOverview() {
   const router = useRouter();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const [outfitGalleryReady, setOutfitGalleryReady] = useState(false);
+  const prevSlideRef = useRef(0);
 
   // Animated opacities for smooth slide crossfade (all images stay mounted = preloaded)
   const slideOpacities = useRef(
     [1, 0, 0, 0].map((v) => new Animated.Value(v))
-  ).current;
-  const galleryOpacities = useRef(
-    [1, 0, 0].map((v) => new Animated.Value(v))
   ).current;
 
   const [fontsLoaded] = useFonts({
@@ -41,9 +51,8 @@ export default function FeatureOverview() {
     'Caladea-Bold': Caladea_700Bold,
   });
 
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
   const safeW = Math.max(windowWidth, 1);
-  const safeH = Math.max(windowHeight, 1);
   const maxContent =
     safeW >= 768 ? LAYOUT.contentMaxWidthDesktop : LAYOUT.contentMaxWidthMobile;
   const innerWidth = Math.min(maxContent, safeW);
@@ -51,42 +60,54 @@ export default function FeatureOverview() {
   /** Web static export: opacity + useNativeDriver on Image/SVG layers often fails to paint. */
   const opacityNativeDriver = Platform.OS !== 'web';
 
-  const galleryImages = [
-    require('@/assets/images/onboarding-assets/Frame 121075726.png'),
-    require('@/assets/images/onboarding-assets/Frame 121075729.png'),
-    require('@/assets/images/onboarding-assets/Frame 121075728.png'),
-  ];
+  // Crossfade when slide changes — outfit slide (1) appears immediately on first entry.
+  useLayoutEffect(() => {
+    const from = prevSlideRef.current;
+    prevSlideRef.current = currentSlide;
+    const enteringOutfitSlide =
+      OUTFIT_SLIDE_ENTER_INSTANT && from !== 1 && currentSlide === 1;
 
-  // Crossfade when slide changes
-  useEffect(() => {
     slideOpacities.forEach((op, i) => {
+      const toValue = i === currentSlide ? 1 : 0;
+      if (enteringOutfitSlide) {
+        op.setValue(toValue);
+        return;
+      }
       Animated.timing(op, {
-        toValue: i === currentSlide ? 1 : 0,
+        toValue,
         duration: SLIDE_TRANSITION_DURATION,
         useNativeDriver: opacityNativeDriver,
       }).start();
     });
+
+    // Always start outfit carousel on the first image when landing on that slide.
+    if (enteringOutfitSlide) {
+      setGalleryIndex(0);
+    }
   }, [currentSlide, opacityNativeDriver]);
 
-  // Smooth crossfade when gallery image changes (slide 1)
   useEffect(() => {
-    galleryOpacities.forEach((op, i) => {
-      Animated.timing(op, {
-        toValue: i === galleryIndex ? 1 : 0,
-        duration: GALLERY_TRANSITION_DURATION,
-        useNativeDriver: opacityNativeDriver,
-      }).start();
-    });
-  }, [galleryIndex, opacityNativeDriver]);
+    let cancelled = false;
+    preloadOutfitGalleryImages()
+      .then(() => {
+        if (!cancelled) setOutfitGalleryReady(true);
+      })
+      .catch(() => {
+        if (!cancelled) setOutfitGalleryReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (currentSlide === 1) {
       const interval = setInterval(() => {
-        setGalleryIndex((prev) => (prev + 1) % galleryImages.length);
-      }, 2500);
+        setGalleryIndex((prev) => (prev + 1) % OUTFIT_GALLERY_IMAGES.length);
+      }, GALLERY_AUTO_ADVANCE_MS);
       return () => clearInterval(interval);
     }
-  }, [currentSlide, galleryImages.length]);
+  }, [currentSlide]);
 
   if (!fontsLoaded) {
     return null;
@@ -97,7 +118,7 @@ export default function FeatureOverview() {
       title: 'Track Your Style',
       description:
         "Upload your daily outfits (OOTD) to discover your style trends and see how much of your wardrobe you're actually using.",
-      image: require('@/assets/images/Track_your_style.png'),
+      image: require('@/assets/images/onboarding-assets/Track_your_style.png'),
     },
     {
       title: 'Personalized Outfit Suggestions',
@@ -122,7 +143,7 @@ export default function FeatureOverview() {
     if (currentSlide < slides.length - 1) {
       setCurrentSlide(currentSlide + 1);
     } else {
-      router.push('/ONBOARDING/account');
+      router.push('/ONBOARDING/login');
     }
   };
 
@@ -131,12 +152,35 @@ export default function FeatureOverview() {
   };
 
   return (
-    <View style={styles.container}>
-      <View style={[styles.innerContainer, { width: innerWidth, height: safeH }]}>
-        <View style={[os.headerBar, os.headerBarSkipOnly]}>
-          <TouchableOpacity onPress={handleSkip} activeOpacity={0.6}>
+    <SafeAreaView style={os.container} edges={['top', 'left', 'right']}>
+      <View style={[os.innerContainer, { width: innerWidth }]}>
+        <View
+          style={[
+            os.headerBarInFlow,
+            styles.headerBarShiftUp,
+            os.headerBarSkipOnly,
+            styles.featureOverviewHeader,
+          ]}
+        >
+          <TouchableOpacity
+            style={os.skipButton}
+            onPress={handleSkip}
+            activeOpacity={0.6}
+          >
             <Text style={os.skipButtonText}>Skip</Text>
           </TouchableOpacity>
+        </View>
+
+        {/* Tiny off-screen images kick off decode as soon as this screen mounts (parallel to slide 1). */}
+        <View style={styles.galleryDecodeStrip} pointerEvents="none">
+          {OUTFIT_GALLERY_IMAGES.map((src, i) => (
+            <Image
+              key={`preload-${i}`}
+              source={src}
+              style={styles.galleryDecodePixel}
+              importantForAccessibility="no"
+            />
+          ))}
         </View>
 
         {/* All images stay mounted (preloaded) - visibility via animated opacity for smooth crossfade */}
@@ -160,20 +204,29 @@ export default function FeatureOverview() {
             ]}
             pointerEvents="none">
             <View style={styles.galleryContainer}>
-              {galleryImages.map((image, index) => (
-                <Animated.View
-                  key={index}
-                  style={[
-                    styles.galleryImage,
-                    { opacity: galleryOpacities[index] },
-                  ]}>
-                  <Image
-                    source={image}
-                    style={styles.galleryImageInner}
-                    resizeMode="contain"
-                  />
-                </Animated.View>
-              ))}
+              {!outfitGalleryReady && currentSlide === 1 ? (
+                <ActivityIndicator color="#C0D1FF" style={styles.galleryLoading} />
+              ) : null}
+              {OUTFIT_GALLERY_IMAGES.map((image, index) => {
+                const visible = index === galleryIndex;
+                return (
+                  <View
+                    key={index}
+                    style={[styles.galleryImage, !visible && styles.galleryImageHidden]}
+                    pointerEvents="none"
+                  >
+                    <Image
+                      source={image}
+                      style={styles.galleryImageInner}
+                      resizeMode="contain"
+                      {...Platform.select({
+                        android: { fadeDuration: 0 },
+                        default: {},
+                      })}
+                    />
+                  </View>
+                );
+              })}
             </View>
           </Animated.View>
           {slides[2].image && (
@@ -233,19 +286,32 @@ export default function FeatureOverview() {
           </View>
         </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: LAYOUT.backgroundColor,
-    justifyContent: 'center',
-    alignItems: 'center',
+  headerBarShiftUp: {
+    marginTop: flowTop.headerShiftMarginTop,
+    marginBottom: flowTop.headerShiftMarginBottom,
   },
-  innerContainer: {
-    position: 'relative',
+  featureOverviewHeader: {
+    paddingHorizontal: LAYOUT.paddingHorizontal,
+    paddingTop: flowTop.scrollPaddingTop,
+  },
+  galleryDecodeStrip: {
+    position: 'absolute',
+    width: 1,
+    height: 1,
+    opacity: 0,
+    overflow: 'hidden',
+    left: 0,
+    top: 0,
+    zIndex: 0,
+  },
+  galleryDecodePixel: {
+    width: 1,
+    height: 1,
   },
   imageContainer: {
     position: 'absolute',
@@ -278,11 +344,21 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     overflow: 'hidden',
     position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  galleryLoading: {
+    position: 'absolute',
+    zIndex: 2,
   },
   galleryImage: {
     position: 'absolute',
     width: '100%',
     height: '100%',
+    opacity: 1,
+  },
+  galleryImageHidden: {
+    opacity: 0,
   },
   galleryImageInner: {
     width: '100%',

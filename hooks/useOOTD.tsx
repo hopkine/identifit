@@ -7,6 +7,7 @@ import React, {
 } from 'react';
 import { OOTD } from '@/types/ootd';
 import { mockUserOOTDs, mockFriendsOOTDs, currentUser } from '@/data/ootd';
+import { formatLocalDateKey } from '@/utils/localDateKey';
 
 type OOTDContextValue = {
   userOOTDs: OOTD[];
@@ -47,7 +48,7 @@ export function OOTDProvider({ children }: { children: React.ReactNode }) {
       } = {}
     ): OOTD => {
       const today = new Date();
-      const dateString = options.date || today.toISOString().split('T')[0];
+      const dateString = options.date ?? formatLocalDateKey(today);
 
       const newOOTD: OOTD = {
         id: `ootd-${Date.now()}`,

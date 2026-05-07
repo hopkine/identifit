@@ -4,17 +4,34 @@ import {
   Text,
   StyleSheet,
   Animated,
-  Image,
+  Easing,
   Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import {
+  useFonts,
+  Caladea_400Regular_Italic,
+} from '@expo-google-fonts/caladea';
+import { preloadOutfitGalleryImages } from '@/constants/outfitGalleryAssets';
 import { LAYOUT, constrainedWidth, SCREEN_HEIGHT } from '@/constants/layout';
 import BannerLogo from '@/components/BannerLogo';
+import Sparkle from '@/components/Sparkle';
+
+const PROGRESS_DURATION_MS = 4800;
 
 export default function Welcome() {
   const router = useRouter();
-  const [progress, setProgress] = useState(0);
-  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    preloadOutfitGalleryImages().catch(() => {});
+  }, []);
+
+  const [fontsLoaded] = useFonts({
+    'Caladea-Italic': Caladea_400Regular_Italic,
+  });
+  const [progressLabel, setProgressLabel] = useState(0);
+  const progressAnim = useRef(new Animated.Value(0)).current;
+  const lastRoundedProgressRef = useRef(-1);
   const navigateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Animated values
@@ -23,10 +40,13 @@ export default function Welcome() {
   const taglineOpacity = useRef(new Animated.Value(0)).current;
   const taglineTranslateY = useRef(new Animated.Value(10)).current;
   const starOpacity = useRef(new Animated.Value(0)).current;
-  const starScale = useRef(new Animated.Value(0)).current;
+  // Avoid scale 0 with SVG (layout / first-frame jank); still invisible at opacity 0.
+  const starScale = useRef(new Animated.Value(0.01)).current;
   const starFloat = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
+    if (!fontsLoaded) return;
+
     // Web: react-native-svg often does not paint inside Animated.View when useNativeDriver is true.
     const logoNativeDriver = Platform.OS !== 'web';
 
@@ -62,7 +82,7 @@ export default function Welcome() {
       ]).start();
     }, 1600);
 
-    // Show star
+    // Show star — run float loop after entrance so two animations aren’t fighting on first frames.
     setTimeout(() => {
       Animated.parallel([
         Animated.timing(starOpacity, {
@@ -75,47 +95,58 @@ export default function Welcome() {
           duration: 1000,
           useNativeDriver: true,
         }),
-      ]).start();
-
-      // Start floating animation
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(starFloat, {
-            toValue: -5,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-          Animated.timing(starFloat, {
-            toValue: 5,
-            duration: 1500,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+      ]).start(() => {
+        Animated.loop(
+          Animated.sequence([
+            Animated.timing(starFloat, {
+              toValue: -5,
+              duration: 1500,
+              useNativeDriver: true,
+            }),
+            Animated.timing(starFloat, {
+              toValue: 5,
+              duration: 1500,
+              useNativeDriver: true,
+            }),
+          ])
+        ).start();
+      });
     }, 2200);
 
-    // Progress bar
-    progressIntervalRef.current = setInterval(() => {
-      setProgress((prev) => {
-        if (prev >= 100) {
-          if (progressIntervalRef.current) {
-            clearInterval(progressIntervalRef.current);
-            progressIntervalRef.current = null;
-          }
-          navigateTimeoutRef.current = setTimeout(() => {
-            router.push('/ONBOARDING/feature-overview');
-          }, 500);
-          return 100;
-        }
-        return prev + Math.random() * 10;
-      });
-    }, 300);
+    const progressListenerId = progressAnim.addListener(({ value }) => {
+      const clamped = Math.min(100, Math.max(0, value));
+      const rounded = Math.round(clamped);
+      if (rounded !== lastRoundedProgressRef.current) {
+        lastRoundedProgressRef.current = rounded;
+        setProgressLabel(rounded);
+      }
+    });
+
+    Animated.timing(progressAnim, {
+      toValue: 100,
+      duration: PROGRESS_DURATION_MS,
+      easing: Easing.inOut(Easing.cubic),
+      useNativeDriver: false,
+    }).start(({ finished }) => {
+      progressAnim.removeListener(progressListenerId);
+      if (finished) {
+        setProgressLabel(100);
+        navigateTimeoutRef.current = setTimeout(() => {
+          router.push('/ONBOARDING/feature-overview');
+        }, 500);
+      }
+    });
 
     return () => {
-      if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+      progressAnim.removeListener(progressListenerId);
+      progressAnim.stopAnimation();
       if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current);
     };
-  }, [router]);
+  }, [router, fontsLoaded]);
+
+  if (!fontsLoaded) {
+    return null;
+  }
 
   return (
     <View style={styles.container}>
@@ -134,7 +165,7 @@ export default function Welcome() {
               </View>
             </Animated.View>
 
-            {/* Vector Star */}
+            {/* Sparkle Star */}
             <Animated.View
               style={[
                 styles.star,
@@ -147,11 +178,7 @@ export default function Welcome() {
                 },
               ]}
             >
-              <Image
-                source={require('@/assets/images/Star.png')}
-                style={styles.starImage}
-                resizeMode="contain"
-              />
+              <Sparkle width={34} height={50} />
             </Animated.View>
           </View>
 
@@ -172,14 +199,19 @@ export default function Welcome() {
         {/* Progress Bar */}
         <View style={styles.progressContainer}>
           <View style={styles.progressBarBackground}>
-            <View
+            <Animated.View
               style={[
                 styles.progressBarFill,
-                { width: `${Math.min(progress, 100)}%` },
+                {
+                  width: progressAnim.interpolate({
+                    inputRange: [0, 100],
+                    outputRange: ['0%', '100%'],
+                  }),
+                },
               ]}
             />
           </View>
-          <Text style={styles.progressText}>{Math.round(progress)}%</Text>
+          <Text style={styles.progressText}>{progressLabel}%</Text>
         </View>
       </View>
     </View>
@@ -217,7 +249,7 @@ const styles = StyleSheet.create({
   },
   star: {
     position: 'absolute',
-    left: 128,
+    left: 136,
     top: -15,
   },
   starImage: {
@@ -226,11 +258,14 @@ const styles = StyleSheet.create({
   },
   tagline: {
     fontFamily: 'Caladea-Italic',
-    fontSize: 16,
+    fontSize: 15,
+    fontWeight: '400',
+    fontStyle: 'italic',
     color: '#FFFFFF',
     textAlign: 'center',
+    letterSpacing: 0,
+    lineHeight: 22.5,
     marginBottom: 48,
-    fontStyle: 'italic',
     marginTop: 16,
   },
   progressContainer: {

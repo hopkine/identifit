@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { Plus, Users, Sparkles } from 'lucide-react-native';
 import { useFonts, Caladea_400Regular, Caladea_700Bold } from '@expo-google-fonts/caladea';
-import { WorkSans_400Regular, WorkSans_500Medium, WorkSans_600SemiBold } from '@expo-google-fonts/work-sans';
 import { mockFriends } from '@/data/social';
 import { useOOTD } from '@/hooks/useOOTD';
 import { currentUser } from '@/data/ootd';
@@ -26,9 +25,6 @@ export default function SocialScreen() {
   const [fontsLoaded] = useFonts({
     'Caladea-Regular': Caladea_400Regular,
     'Caladea-Bold': Caladea_700Bold,
-    'WorkSans-Regular': WorkSans_400Regular,
-    'WorkSans-Medium': WorkSans_500Medium,
-    'WorkSans-SemiBold': WorkSans_600SemiBold,
   });
 
   const handleRefresh = async () => {
@@ -48,8 +44,8 @@ export default function SocialScreen() {
       'Share Your OOTD',
       'Ready to share today\'s outfit with your friends?',
       [
-        { text: 'Take Photo', onPress: () => console.log('Take photo') },
-        { text: 'Choose from Gallery', onPress: () => console.log('Choose from gallery') },
+        { text: 'Take Photo', onPress: () => {} },
+        { text: 'Choose from Gallery', onPress: () => {} },
         { text: 'Cancel', style: 'cancel' },
       ]
     );
@@ -213,7 +209,7 @@ export default function SocialScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LAYOUT.backgroundColor,
+    backgroundColor: LAYOUT.navScreenBackground,
     alignItems: 'center',
   },
   innerWrapper: {
@@ -245,7 +241,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     fontSize: 14,
-    fontFamily: 'WorkSans-Regular',
+    fontFamily: 'Default',
     color: '#9CA3AF',
   },
   addButton: {
@@ -289,7 +285,8 @@ const styles = StyleSheet.create({
   },
   onlineText: {
     fontSize: 12,
-    fontFamily: 'WorkSans-Medium',
+    fontFamily: 'Default',
+    fontWeight: '500',
     color: '#4ADE80',
   },
   ootdsGrid: {
@@ -319,7 +316,7 @@ const styles = StyleSheet.create({
   },
   inspirationText: {
     fontSize: 14,
-    fontFamily: 'WorkSans-Regular',
+    fontFamily: 'Default',
     color: '#9CA3AF',
     lineHeight: 20,
     marginBottom: 16,
@@ -332,7 +329,8 @@ const styles = StyleSheet.create({
   },
   shareButtonText: {
     fontSize: 14,
-    fontFamily: 'WorkSans-SemiBold',
+    fontFamily: 'Default',
+    fontWeight: '600',
     color: '#000000',
   },
   emptyState: {
@@ -350,7 +348,7 @@ const styles = StyleSheet.create({
   },
   emptySubtitle: {
     fontSize: 14,
-    fontFamily: 'WorkSans-Regular',
+    fontFamily: 'Default',
     color: '#9CA3AF',
     textAlign: 'center',
     lineHeight: 20,
@@ -364,7 +362,8 @@ const styles = StyleSheet.create({
   },
   inviteButtonText: {
     fontSize: 14,
-    fontFamily: 'WorkSans-SemiBold',
+    fontFamily: 'Default',
+    fontWeight: '600',
     color: '#000000',
   },
 });

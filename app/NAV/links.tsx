@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, SafeAreaView } from 'react-native';
 import { House } from 'lucide-react-native';
+import { LAYOUT } from '@/constants/layout';
 
 export default function LinksScreen() {
   return (
@@ -17,7 +18,7 @@ export default function LinksScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#1a1a1a',
+    backgroundColor: LAYOUT.navScreenBackground,
   },
   content: {
     flex: 1,

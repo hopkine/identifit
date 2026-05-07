@@ -1,5 +1,5 @@
 /**
- * Experimental home UI. When false, stat / outfit sections use flat chrome.
- * Toggle off before a stable release if 3D cards are not final.
+ * Legacy flag — 3D “elevated” home cards were removed in favor of grouped iOS-style surfaces.
+ * Kept so any external reference does not break; always off.
  */
-export const BETA_HOME_CARD_3D = true;
+export const BETA_HOME_CARD_3D = false;

@@ -20,7 +20,7 @@ export default function ClosetScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LAYOUT.backgroundColor,
+    backgroundColor: LAYOUT.navScreenBackground,
     alignItems: 'center',
   },
   innerWrapper: {

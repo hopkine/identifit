@@ -373,7 +373,8 @@ const styles = StyleSheet.create({
   },
   optionText: {
     fontSize: 14,
-    fontFamily: 'WorkSans-Medium',
+    fontFamily: 'Default',
+    fontWeight: '500',
     color: '#C0D1FF',
     textAlign: 'center',
   },
@@ -382,13 +383,14 @@ const styles = StyleSheet.create({
   },
   optionTitle: {
     fontSize: 16,
-    fontFamily: 'WorkSans-SemiBold',
+    fontFamily: 'Default',
+    fontWeight: '600',
     color: '#C0D1FF',
     marginBottom: 4,
   },
   optionDescription: {
     fontSize: 12,
-    fontFamily: 'WorkSans-Regular',
+    fontFamily: 'Default',
     color: '#9CA3AF',
     lineHeight: 16,
   },
@@ -397,7 +399,7 @@ const styles = StyleSheet.create({
   },
   temperatureText: {
     fontSize: 12,
-    fontFamily: 'WorkSans-Regular',
+    fontFamily: 'Default',
     color: '#9CA3AF',
     marginTop: 4,
   },
@@ -406,7 +408,7 @@ const styles = StyleSheet.create({
   },
   rangeText: {
     fontSize: 11,
-    fontFamily: 'WorkSans-Regular',
+    fontFamily: 'Default',
     color: '#9CA3AF',
     marginTop: 4,
   },
@@ -415,13 +417,13 @@ const styles = StyleSheet.create({
   },
   durationDescription: {
     fontSize: 11,
-    fontFamily: 'WorkSans-Regular',
+    fontFamily: 'Default',
     color: '#9CA3AF',
     marginTop: 4,
   },
   timeDescription: {
     fontSize: 11,
-    fontFamily: 'WorkSans-Regular',
+    fontFamily: 'Default',
     color: '#9CA3AF',
     marginTop: 4,
   },
@@ -444,7 +446,8 @@ const styles = StyleSheet.create({
   },
   clearButtonText: {
     fontSize: 16,
-    fontFamily: 'WorkSans-Medium',
+    fontFamily: 'Default',
+    fontWeight: '500',
     color: '#9CA3AF',
   },
   applyButton: {
@@ -456,7 +459,8 @@ const styles = StyleSheet.create({
   },
   applyButtonText: {
     fontSize: 16,
-    fontFamily: 'WorkSans-SemiBold',
+    fontFamily: 'Default',
+    fontWeight: '600',
     color: '#000000',
   },
 });

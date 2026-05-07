@@ -22,8 +22,12 @@ export const LAYOUT = {
   contentMaxWidthDesktop: DESKTOP_MAX_WIDTH,
   /** Horizontal padding for content */
   paddingHorizontal: 24,
-  /** Standard background color */
+  /** Standard background color (onboarding, legacy surfaces) */
   backgroundColor: '#1a1a1a',
+  /** Main tab stack — solid black behind NAV screens and tab bar */
+  navScreenBackground: '#000000',
+  /** Primary lavender / purple accent (buttons, calendar highlights) */
+  accentPurple: '#A8B3FF',
 } as const;
 
 /** Width for constrained content - responsive: 560px on desktop, 393px on mobile */

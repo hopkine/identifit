@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
   Image,
+  Animated,
+  Platform,
 } from 'react-native';
 import {
   SafeAreaView,
@@ -18,15 +19,16 @@ import {
   Caladea_400Regular,
   Caladea_700Bold,
 } from '@expo-google-fonts/caladea';
-import {
-  WorkSans_400Regular,
-  WorkSans_500Medium,
-  WorkSans_600SemiBold,
-} from '@expo-google-fonts/work-sans';
 import * as Haptics from 'expo-haptics';
-import { Platform } from 'react-native';
 import { constrainedWidth } from '@/constants/layout';
-import { onboardingScreenStyles as os } from '@/constants/onboardingScreens';
+import {
+  onboardingScreenStyles as os,
+  ONBOARDING_IN_FLOW_TOP as flowTop,
+} from '@/constants/onboardingScreens';
+
+/** San Francisco on iOS (`fontFamily: 'System'`); unused on other platforms. */
+const iosNativeFont =
+  Platform.OS === 'ios' ? ({ fontFamily: 'System' } as const) : null;
 
 interface BodyType {
   id: string;
@@ -40,31 +42,31 @@ const bodyTypes: BodyType[] = [
     id: 'hourglass',
     name: 'Hourglass',
     description: 'Waist is the narrowest part of frame',
-    image: require('@/assets/images/image 122.png'),
+    image: require('@/assets/images/body-type/Hourglass.png'),
   },
   {
     id: 'triangle',
     name: 'Triangle',
     description: 'Hips are broader than shoulders',
-    image: require('@/assets/images/image copy copy copy.png'),
+    image: require('@/assets/images/body-type/Triangle.png'),
   },
   {
     id: 'rectangle',
     name: 'Rectangle',
     description: 'Hips, shoulders & waist are the same proportion',
-    image: require('@/assets/images/image (1).png'),
+    image: require('@/assets/images/body-type/Rectangle.png'),
   },
   {
     id: 'oval',
     name: 'Oval',
     description: 'Hips & shoulders are narrower than waist',
-    image: require('@/assets/images/image (2).png'),
+    image: require('@/assets/images/body-type/Oval.png'),
   },
   {
     id: 'heart',
     name: 'Heart',
     description: 'Hips are narrower than shoulders',
-    image: require('@/assets/images/image (3).png'),
+    image: require('@/assets/images/body-type/Heart.png'),
   },
 ];
 
@@ -72,17 +74,17 @@ export default function BodyTypeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [selectedBodyType, setSelectedBodyType] = useState<string | null>(null);
+  const ctaOpacity = useRef(new Animated.Value(0)).current;
+  const ctaTranslateY = useRef(new Animated.Value(24)).current;
+  const ctaScale = useRef(new Animated.Value(0.94)).current;
+  const hasShownCta = useRef(false);
 
   const [fontsLoaded] = useFonts({
     'Caladea-Regular': Caladea_400Regular,
     'Caladea-Bold': Caladea_700Bold,
-    'WorkSans-Regular': WorkSans_400Regular,
-    'WorkSans-Medium': WorkSans_500Medium,
-    'WorkSans-SemiBold': WorkSans_600SemiBold,
   });
 
   const handleBack = () => {
-    console.log('Back pressed');
     router.back();
   };
 
@@ -95,13 +97,45 @@ export default function BodyTypeScreen() {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    console.log('Continue pressed with selection:', selectedBodyType);
     router.push('/ONBOARDING/personal-style');
   };
 
   const handleBodyTypeSelect = (bodyTypeId: string) => {
     setSelectedBodyType(bodyTypeId);
   };
+
+  useEffect(() => {
+    if (!selectedBodyType) {
+      return;
+    }
+    if (hasShownCta.current) {
+      return;
+    }
+    hasShownCta.current = true;
+    ctaOpacity.setValue(0);
+    ctaTranslateY.setValue(24);
+    ctaScale.setValue(0.94);
+    Animated.parallel([
+      Animated.spring(ctaOpacity, {
+        toValue: 1,
+        useNativeDriver: true,
+        damping: 20,
+        stiffness: 200,
+      }),
+      Animated.spring(ctaTranslateY, {
+        toValue: 0,
+        useNativeDriver: true,
+        damping: 16,
+        stiffness: 280,
+      }),
+      Animated.spring(ctaScale, {
+        toValue: 1,
+        useNativeDriver: true,
+        damping: 16,
+        stiffness: 280,
+      }),
+    ]).start();
+  }, [selectedBodyType]);
 
   if (!fontsLoaded) {
     return null;
@@ -110,24 +144,24 @@ export default function BodyTypeScreen() {
   return (
     <SafeAreaView style={os.container} edges={['top', 'left', 'right']}>
       <View style={[os.innerContainer, { width: constrainedWidth }]}>
-        <View style={os.headerBar}>
-          <TouchableOpacity
-            style={os.backButton}
-            onPress={handleBack}
-            activeOpacity={0.6}
-          >
-            <ChevronLeft size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleSkip} activeOpacity={0.6}>
-            <Text style={os.skipButtonText}>Skip</Text>
-          </TouchableOpacity>
-        </View>
+        <View style={[os.content, styles.mainContent]}>
+          <View style={[os.headerBarInFlow, styles.headerBarShiftUp]}>
+            <TouchableOpacity
+              style={os.backButton}
+              onPress={handleBack}
+              activeOpacity={0.6}
+            >
+              <ChevronLeft size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={os.skipButton}
+              onPress={handleSkip}
+              activeOpacity={0.6}
+            >
+              <Text style={os.skipButtonText}>Skip</Text>
+            </TouchableOpacity>
+          </View>
 
-        <ScrollView
-          style={os.content}
-          contentContainerStyle={os.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
           <View style={os.titleContainer}>
             <Text style={os.title}>Body Type</Text>
             <Text style={os.subtitle}>
@@ -153,7 +187,7 @@ export default function BodyTypeScreen() {
                   </View>
                   <View style={styles.textContainer}>
                     <Text style={styles.optionTitle}>{bodyType.name}</Text>
-                    <Text style={styles.optionDescription}>
+                    <Text style={[styles.optionDescription, iosNativeFont]}>
                       {bodyType.description}
                     </Text>
                   </View>
@@ -161,48 +195,57 @@ export default function BodyTypeScreen() {
               </TouchableOpacity>
             ))}
           </View>
-        </ScrollView>
-
-        <View
-          style={[
-            os.bottomContainer,
-            { paddingBottom: Math.max(insets.bottom, 12) },
-          ]}
-        >
-          <TouchableOpacity
-            style={[
-              styles.continueButton,
-              !selectedBodyType && styles.continueButtonDisabled,
-            ]}
-            onPress={handleContinue}
-            activeOpacity={selectedBodyType ? 0.8 : 1}
-            disabled={!selectedBodyType}
-          >
-            <Text
-              style={[
-                styles.continueButtonText,
-                !selectedBodyType && styles.continueButtonTextDisabled,
-              ]}
-            >
-              Continue
-            </Text>
-          </TouchableOpacity>
         </View>
+
+        {selectedBodyType ? (
+          <Animated.View
+            style={[
+              os.bottomContainer,
+              {
+                paddingBottom: Math.max(insets.bottom, 12),
+              },
+              styles.bottomBar,
+              {
+                opacity: ctaOpacity,
+                transform: [{ translateY: ctaTranslateY }, { scale: ctaScale }],
+              },
+            ]}
+          >
+            <TouchableOpacity
+              style={styles.continueButton}
+              onPress={handleContinue}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.continueButtonText, iosNativeFont]}>
+                Continue
+              </Text>
+            </TouchableOpacity>
+          </Animated.View>
+        ) : null}
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  headerBarShiftUp: {
+    marginTop: flowTop.headerShiftMarginTop,
+    marginBottom: flowTop.headerShiftMarginBottom,
+  },
+  mainContent: {
+    flex: 1,
+    paddingTop: flowTop.scrollPaddingTop,
+    paddingBottom: 32,
+  },
   optionsContainer: {
-    gap: 20,
+    gap: 14,
   },
   optionCard: {
     backgroundColor: 'transparent',
     borderWidth: 1,
     borderColor: '#4A4A4C',
-    borderRadius: 12,
-    padding: 18,
+    borderRadius: 14,
+    padding: 14,
   },
   selectedOptionCard: {
     borderColor: '#A8B3FF',
@@ -235,33 +278,33 @@ const styles = StyleSheet.create({
   },
   optionDescription: {
     fontSize: 13,
-    fontFamily: 'Helvetica Neue',
+    fontFamily: 'Caladea-Regular',
     color: '#D9D9D9',
     lineHeight: 18,
   },
-  continueButton: {
-    backgroundColor: '#A8B3FF',
-    paddingVertical: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  bottomBar: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    paddingTop: 16,
   },
-  continueButtonDisabled: {
-    backgroundColor: '#4A4A4C',
+  continueButton: {
+    width: '100%',
+    minHeight: 52,
+    backgroundColor: '#A8B3FF',
+    paddingVertical: 15,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   continueButtonText: {
     fontSize: 16,
+    fontFamily: 'Caladea-Regular',
     color: '#000000',
     letterSpacing: 0.2,
-  },
-  continueButtonTextDisabled: {
-    color: '#8E8E93',
   },
 });

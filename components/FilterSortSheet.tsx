@@ -16,7 +16,6 @@ import {
 import Slider from '@react-native-community/slider';
 import Svg, { Path } from 'react-native-svg';
 import { useFonts, Caladea_400Regular, Caladea_700Bold } from '@expo-google-fonts/caladea';
-import { WorkSans_400Regular, WorkSans_500Medium, WorkSans_600SemiBold } from '@expo-google-fonts/work-sans';
 
 interface FilterSortSheetProps {
   visible: boolean;
@@ -115,9 +114,6 @@ export default function FilterSortSheet({
   const [fontsLoaded] = useFonts({
     'Caladea-Regular': Caladea_400Regular,
     'Caladea-Bold': Caladea_700Bold,
-    'WorkSans-Regular': WorkSans_400Regular,
-    'WorkSans-Medium': WorkSans_500Medium,
-    'WorkSans-SemiBold': WorkSans_600SemiBold,
   });
 
   const panResponder = useRef(
@@ -431,7 +427,8 @@ const styles = StyleSheet.create({
   },
   resetText: {
     fontSize: 15,
-    fontFamily: 'WorkSans-Medium',
+    fontFamily: 'Default',
+    fontWeight: '500',
     color: '#FFFFFF',
   },
   content: {
@@ -485,7 +482,8 @@ const styles = StyleSheet.create({
   },
   filterText: {
     fontSize: 12,
-    fontFamily: 'WorkSans-Medium',
+    fontFamily: 'Default',
+    fontWeight: '500',
     color: '#FFFFFF',
     textAlign: 'center',
     lineHeight: 14,
@@ -536,7 +534,7 @@ const styles = StyleSheet.create({
   },
   labelText: {
     fontSize: 14,
-    fontFamily: 'WorkSans-Regular',
+    fontFamily: 'Default',
     color: '#FFFFFF',
   },
   footer: {
@@ -552,7 +550,8 @@ const styles = StyleSheet.create({
   },
   applyButtonText: {
     fontSize: 16,
-    fontFamily: 'WorkSans-SemiBold',
+    fontFamily: 'Default',
+    fontWeight: '600',
     color: '#000000',
   },
 });

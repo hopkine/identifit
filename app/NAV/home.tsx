@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Image,
   TouchableOpacity,
   SafeAreaView,
   Alert,
@@ -19,24 +18,21 @@ import {
   Caladea_400Regular,
   Caladea_700Bold,
 } from '@expo-google-fonts/caladea';
-import {
-  WorkSans_400Regular,
-  WorkSans_500Medium,
-  WorkSans_600SemiBold,
-} from '@expo-google-fonts/work-sans';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
-import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
+import { router } from 'expo-router';
 import { useOOTD } from '@/hooks/useOOTD';
 import { calculateOOTDStreak } from '@/utils/ootdStreak';
+import { formatLocalDateKey } from '@/utils/localDateKey';
 import { currentUser } from '@/data/ootd';
 import type { OOTD } from '@/types/ootd';
 import { LAYOUT, constrainedWidth } from '@/constants/layout';
-import { BETA_HOME_CARD_3D } from '@/constants/beta';
+import OutfitWeekSlotCutout from '@/components/OutfitWeekSlotCutout';
 import StreakIcon from '@/components/StreakIcon';
 import StarIcon from '@/components/StarIcon';
 import ClosetIcon from '@/components/ClosetIcon';
-import OutfitWeekSlotCutout from '@/components/OutfitWeekSlotCutout';
+import Sparkle from '@/components/Sparkle';
+import OotdCameraCapture from '@/components/OotdCameraCapture';
 
 /** Outfit-of-the-week strip — matches design reference proportions (~1 : 3.7) */
 const OUTFIT_SLOT_WIDTH = 56;
@@ -45,9 +41,14 @@ const OUTFIT_DAY_GAP = 10;
 /** Dot + date + weekday stack above each slot (aligns chevron with slot column) */
 const OUTFIT_LABEL_STACK_HEIGHT = 64;
 
-/** Corner decoration icons on stat cards (Streak + Top Styles) */
+/** Corner decoration on legacy stat cards (top styles + closet) */
 const STAT_CARD_DECOR_ICON_WIDTH = 46;
 const STAT_CARD_DECOR_ICON_HEIGHT = 70;
+
+/** iOS dark grouped secondary surface */
+const GROUPED_CARD_BG = '#1C1C1E';
+const IOS_SECONDARY_LABEL = 'rgba(235, 235, 245, 0.55)';
+const HAIRLINE = 'rgba(255, 255, 255, 0.08)';
 
 function ootdSlotImageSource(ootd: OOTD | undefined): ImageSourcePropType {
   const raw = ootd?.cutoutImageUri ?? ootd?.imageUri;
@@ -73,29 +74,20 @@ function formatOutfitWeekRange(
 }
 
 export default function HomeScreen() {
-  const { saveOOTD, getOOTDForDate, getRecentOOTDs, userOOTDs, deleteOOTD, getTopStyles } =
+  const { saveOOTD, getOOTDForDate, userOOTDs, deleteOOTD, getTopStyles } =
     useOOTD();
-  const cameraRef = React.useRef<any>(null);
-  const [showCamera, setShowCamera] = React.useState(false);
-  const [facing, setFacing] = React.useState<CameraType>('back');
+  const [ootdCameraOpen, setOotdCameraOpen] = React.useState(false);
   const calendarScrollRef = React.useRef<ScrollView>(null);
 
   const [fontsLoaded] = useFonts({
     'Caladea-Regular': Caladea_400Regular,
     'Caladea-Bold': Caladea_700Bold,
-    'WorkSans-Regular': WorkSans_400Regular,
-    'WorkSans-Medium': WorkSans_500Medium,
-    'WorkSans-SemiBold': WorkSans_600SemiBold,
   });
 
   // Force re-render when OOTDs change
   React.useEffect(() => {
     // This will trigger a re-render when userOOTDs changes
   }, [userOOTDs]);
-
-  if (!fontsLoaded) {
-    return null;
-  }
 
   const handleAddOutfit = () => {
     // Trigger haptic feedback on button press
@@ -108,12 +100,12 @@ export default function HomeScreen() {
       'Add your outfit of the day to your collection',
       [
         {
-          text: 'Take Photo',
-          onPress: openCamera,
-        },
-        {
           text: 'Photo Library',
           onPress: pickImageFromLibrary,
+        },
+        {
+          text: 'Take Photo',
+          onPress: openCamera,
         },
         {
           text: 'Cancel',
@@ -136,7 +128,7 @@ export default function HomeScreen() {
       console.log('Selected image:', result.assets[0].uri);
 
       // Save the OOTD
-      const newOOTD = saveOOTD(result.assets[0].uri, {
+      saveOOTD(result.assets[0].uri, {
         occasion: 'casual', // Could be determined from context or user input
         weather: 'sunny', // Could be fetched from weather API
         isPrivate: false,
@@ -146,33 +138,8 @@ export default function HomeScreen() {
     }
   };
 
-  const openCamera = async () => {
-    setShowCamera(true);
-  };
-
-  const takePicture = async (camera: any) => {
-    if (camera) {
-      const photo = await camera.takePictureAsync({
-        quality: 1,
-        base64: false,
-      });
-
-      setShowCamera(false);
-      console.log('Photo taken:', photo.uri);
-
-      // Save the OOTD
-      const newOOTD = saveOOTD(photo.uri, {
-        occasion: 'casual',
-        weather: 'sunny',
-        isPrivate: false,
-      });
-
-      Alert.alert('Success', 'Your OOTD has been captured and shared!');
-    }
-  };
-
-  const toggleCameraFacing = () => {
-    setFacing((current) => (current === 'back' ? 'front' : 'back'));
+  const openCamera = () => {
+    setOotdCameraOpen(true);
   };
 
   const handleLongPressOOTD = (day: any) => {
@@ -205,7 +172,6 @@ export default function HomeScreen() {
                   style: 'destructive',
                   onPress: () => {
                     deleteOOTD(day.ootd.id);
-                    Alert.alert('Deleted', 'Your OOTD has been deleted.');
                   },
                 },
               ]
@@ -234,7 +200,6 @@ export default function HomeScreen() {
                     style: 'destructive',
                     onPress: () => {
                       deleteOOTD(day.ootd.id);
-                      Alert.alert('Deleted', 'Your OOTD has been deleted.');
                     },
                   },
                 ]
@@ -246,53 +211,21 @@ export default function HomeScreen() {
     }
   };
 
-  if (showCamera) {
-    return (
-      <SafeAreaView style={styles.cameraContainer}>
-        <StatusBar style="light" />
-        <CameraView style={styles.camera} facing={facing} ref={cameraRef}>
-          <View style={styles.cameraControls}>
-            <TouchableOpacity
-              style={styles.cameraButton}
-              onPress={() => setShowCamera(false)}
-            >
-              <Text style={styles.cameraButtonText}>Cancel</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.captureButton}
-              onPress={() => {
-                if (cameraRef.current) {
-                  takePicture(cameraRef.current);
-                }
-              }}
-            >
-              <View style={styles.captureButtonInner} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.cameraButton}
-              onPress={toggleCameraFacing}
-            >
-              <Text style={styles.cameraButtonText}>Flip</Text>
-            </TouchableOpacity>
-          </View>
-        </CameraView>
-      </SafeAreaView>
-    );
+  if (!fontsLoaded) {
+    return null;
   }
 
   // Generate outfit days based on actual OOTD data
   const generateOutfitDays = () => {
     const today = new Date();
-    const todayDateString = today.toISOString().split('T')[0];
+    const todayDateString = formatLocalDateKey(today);
     const days = [];
 
     for (let i = 4; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(today.getDate() - i);
 
-      const dateString = date.toISOString().split('T')[0];
+      const dateString = formatLocalDateKey(date);
       const ootd = getOOTDForDate(dateString);
 
       days.push({
@@ -344,9 +277,15 @@ export default function HomeScreen() {
           height={STAT_CARD_DECOR_ICON_HEIGHT}
         />
       </View>
-      <View style={styles.dayStreakTextBlock}>
-        <Text style={styles.statNumber}>{currentStreak}</Text>
-        <Text style={styles.statLabel}>day OOTD{'\n'}streak</Text>
+      <View style={styles.streakCardContent}>
+        <Text style={styles.streakStatNumber}>{currentStreak}</Text>
+        <Text style={styles.streakFootnote}>
+          {currentStreak === 0
+            ? 'Log an OOTD to start a streak.'
+            : currentStreak === 1
+              ? 'day in a row'
+              : 'days in a row'}
+        </Text>
       </View>
     </>
   );
@@ -402,8 +341,14 @@ export default function HomeScreen() {
             {formatOutfitWeekRange(outfitDays)}
           </Text>
         </View>
-        <TouchableOpacity style={styles.calendarButton}>
-          <Calendar size={18} color="#FFFFFF" />
+        <TouchableOpacity
+          style={styles.calendarButton}
+          onPress={() => router.push('/memories')}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel="Open memories calendar"
+        >
+          <Calendar size={18} color={LAYOUT.accentPurple} />
         </TouchableOpacity>
       </View>
 
@@ -454,8 +399,8 @@ export default function HomeScreen() {
                   onPress={handleAddOutfit}
                   activeOpacity={0.85}
                 >
-                  <View style={styles.addOutfitCircle}>
-                    <Plus size={11} color="#1a1a1a" strokeWidth={2} />
+                  <View style={styles.outfitWeekAddFrame}>
+                    <Plus size={24} color="#A8B3FF" strokeWidth={2.25} />
                   </View>
                 </TouchableOpacity>
               )}
@@ -470,13 +415,14 @@ export default function HomeScreen() {
           hitSlop={{ top: 12, bottom: 12, left: 8, right: 8 }}
           accessibilityLabel="Scroll outfits"
         >
-          <ChevronRight size={22} color="#B3C8FF" strokeWidth={2} />
+          <ChevronRight size={20} color={IOS_SECONDARY_LABEL} strokeWidth={2} />
         </TouchableOpacity>
       </View>
     </>
   );
 
   return (
+    <>
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
       <View style={styles.innerWrapper}>
@@ -494,75 +440,23 @@ export default function HomeScreen() {
           </Text>
         </View>
 
-        {/* Statistics Cards — 3D shells gated by BETA_HOME_CARD_3D */}
         <View style={styles.statsContainer}>
-          {BETA_HOME_CARD_3D && (
-            <View style={styles.betaHomeRow}>
-              <View style={styles.betaPill}>
-                <Text style={styles.betaPillText}>Beta · elevated cards</Text>
-              </View>
-            </View>
-          )}
           <View style={styles.statsRow}>
-            {BETA_HOME_CARD_3D ? (
-              <View style={styles.dayStreakCardElevated}>
-                <View style={styles.dayStreakCard}>{streakCardBody}</View>
-              </View>
-            ) : (
-              <View style={styles.dayStreakCardFlat}>{streakCardBody}</View>
-            )}
-
-            {BETA_HOME_CARD_3D ? (
-              <View style={styles.topStylesCardElevated}>
-                <View style={styles.topStylesCardFace}>
-                  {topStylesCardBody}
-                </View>
-              </View>
-            ) : (
-              <View style={styles.topStylesCardFlat}>{topStylesCardBody}</View>
-            )}
+            <View style={styles.dayStreakCardFlat}>{streakCardBody}</View>
+            <View style={styles.topStylesCardFlat}>{topStylesCardBody}</View>
           </View>
-
-          {BETA_HOME_CARD_3D ? (
-            <View style={styles.progressCardElevated}>
-              <View style={styles.progressCard}>{progressCardBody}</View>
-            </View>
-          ) : (
-            <View style={styles.progressCardFlat}>{progressCardBody}</View>
-          )}
+          <View style={styles.progressCardFlat}>{progressCardBody}</View>
         </View>
 
-        <View style={styles.pageIndicator}>
-          <View style={styles.dot} />
-          <View style={[styles.dot, styles.activeDot]} />
+        <View style={[styles.groupedCard, styles.outfitSectionOuter]}>
+          <View style={styles.outfitSectionInner}>{outfitWeekSectionInner}</View>
         </View>
-
-        {/* Outfit of the Week */}
-        {BETA_HOME_CARD_3D ? (
-          <View style={styles.outfitSectionElevated}>
-            <View style={styles.outfitSectionFace}>
-              <View style={styles.outfitSectionInner}>
-                {outfitWeekSectionInner}
-              </View>
-            </View>
-          </View>
-        ) : (
-          <View style={styles.outfitSectionWrapper}>
-            <View style={styles.outfitSectionInner}>
-              {outfitWeekSectionInner}
-            </View>
-          </View>
-        )}
 
         {/* Bottom spoiler — scroll to reveal */}
         <View style={styles.spoilerFooter}>
           <View style={styles.spoilerRule} />
           <View style={styles.logoTeaser}>
-            <Image
-              source={require('@/assets/images/image copy.png')}
-              style={styles.logoImage}
-              resizeMode="contain"
-            />
+            <Sparkle width={50} height={50} />
             <Text style={styles.logoText}>identifit</Text>
             <Text style={styles.logoTagline}>Your style, identified</Text>
           </View>
@@ -570,13 +464,26 @@ export default function HomeScreen() {
       </ScrollView>
       </View>
     </SafeAreaView>
+    <OotdCameraCapture
+      open={ootdCameraOpen}
+      onClose={() => setOotdCameraOpen(false)}
+      onPhotoCaptured={(uri) => {
+        saveOOTD(uri, {
+          occasion: 'casual',
+          weather: 'sunny',
+          isPrivate: false,
+        });
+        Alert.alert('Success', 'Your OOTD has been captured and shared!');
+      }}
+    />
+  </>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LAYOUT.backgroundColor,
+    backgroundColor: LAYOUT.navScreenBackground,
     alignItems: 'center',
   },
   innerWrapper: {
@@ -598,7 +505,8 @@ const styles = StyleSheet.create({
   },
   greetingKicker: {
     fontSize: 11,
-    fontFamily: 'WorkSans-SemiBold',
+    fontFamily: 'Default',
+    fontWeight: '600',
     color: 'rgba(192, 209, 255, 0.88)',
     letterSpacing: 2.4,
     textTransform: 'uppercase',
@@ -612,47 +520,22 @@ const styles = StyleSheet.create({
     lineHeight: 40,
     marginBottom: 14,
   },
-  subtitle: {
-    fontSize: 15,
-    fontFamily: 'WorkSans-Regular',
-    color: 'rgba(255, 255, 255, 0.78)',
-    lineHeight: 22,
-    letterSpacing: 0.15,
-    maxWidth: 320,
-  },
   statsContainer: {
     marginBottom: 16,
     paddingHorizontal: LAYOUT.paddingHorizontal,
-  },
-  betaHomeRow: {
-    marginBottom: 10,
-  },
-  betaPill: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    backgroundColor: 'rgba(192, 209, 255, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(192, 209, 255, 0.28)',
-  },
-  betaPillText: {
-    fontSize: 11,
-    fontFamily: 'WorkSans-Medium',
-    color: '#B3C8FF',
-    letterSpacing: 0.35,
   },
   statsRow: {
     flexDirection: 'row',
     gap: 10,
     marginBottom: 10,
   },
-  statCard: {
-    flex: 1,
-    backgroundColor: 'rgba(63, 63, 63, 0.25)',
-    borderRadius: 10,
-    padding: 20,
-    position: 'relative',
+  groupedCard: {
+    backgroundColor: GROUPED_CARD_BG,
+    borderRadius: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: HAIRLINE,
   },
   dayStreakCardFlat: {
     flex: 1,
@@ -664,32 +547,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(244, 173, 179, 0.25)',
   },
-  dayStreakCardElevated: {
-    flex: 1,
-    borderRadius: 12,
-    backgroundColor: 'rgba(28, 28, 30, 0.6)',
-    shadowColor: '#1a0a10',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.55,
-    shadowRadius: 16,
-    elevation: 14,
-  },
-  dayStreakCard: {
-    flex: 1,
-    backgroundColor: 'rgba(72, 68, 78, 0.42)',
-    borderRadius: 11,
-    padding: 18,
-    position: 'relative',
-    overflow: 'hidden',
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderBottomWidth: 2,
-    borderTopColor: 'rgba(255, 255, 255, 0.16)',
-    borderLeftColor: 'rgba(255, 255, 255, 0.09)',
-    borderRightColor: 'rgba(0, 0, 0, 0.28)',
-    borderBottomColor: 'rgba(0, 0, 0, 0.42)',
-  },
   streakCardDecoration: {
     position: 'absolute',
     right: -6,
@@ -698,8 +555,21 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     zIndex: 0,
   },
-  dayStreakTextBlock: {
+  streakCardContent: {
     zIndex: 1,
+  },
+  streakStatNumber: {
+    fontSize: 27,
+    color: '#E5ADFE',
+    fontFamily: 'Caladea-Bold',
+  },
+  streakFootnote: {
+    marginTop: 4,
+    fontSize: 12,
+    fontFamily: 'Default',
+    color: '#A8B0BD',
+    lineHeight: 18,
+    letterSpacing: 0.2,
   },
   topStylesCardFlat: {
     flex: 1,
@@ -710,32 +580,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(235, 252, 183, 0.25)',
-  },
-  topStylesCardElevated: {
-    flex: 1,
-    borderRadius: 12,
-    backgroundColor: 'rgba(26, 28, 20, 0.65)',
-    shadowColor: '#121808',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.52,
-    shadowRadius: 16,
-    elevation: 14,
-  },
-  topStylesCardFace: {
-    flex: 1,
-    backgroundColor: 'rgba(56, 58, 44, 0.42)',
-    borderRadius: 11,
-    padding: 18,
-    position: 'relative',
-    overflow: 'hidden',
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderBottomWidth: 2,
-    borderTopColor: 'rgba(235, 252, 183, 0.22)',
-    borderLeftColor: 'rgba(235, 252, 183, 0.11)',
-    borderRightColor: 'rgba(0, 0, 0, 0.28)',
-    borderBottomColor: 'rgba(0, 0, 0, 0.44)',
   },
   topStylesCardDecoration: {
     position: 'absolute',
@@ -748,18 +592,6 @@ const styles = StyleSheet.create({
   topStylesTextBlock: {
     zIndex: 1,
   },
-  statNumber: {
-    fontSize: 27,
-    color: '#E5ADFE',
-    fontFamily: 'Caladea-Bold',
-  },
-  statLabel: {
-    fontSize: 12,
-    fontFamily: 'WorkSans-Regular',
-    color: '#A8B0BD',
-    lineHeight: 18,
-    letterSpacing: 0.2,
-  },
   statTitle: {
     fontSize: 21,
     color: '#EBFCB7',
@@ -767,20 +599,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: -0.3,
     lineHeight: 26,
+    marginBottom: 2,
   },
   styleItem: {
     fontSize: 12,
-    fontFamily: 'WorkSans-Regular',
+    fontFamily: 'Default',
     color: '#A8B0BD',
     lineHeight: 17,
     letterSpacing: 0.15,
-  },
-  iconImage: {
-    width: 40,
-    height: 40,
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
   },
   progressCardFlat: {
     backgroundColor: 'rgba(63, 63, 63, 0.25)',
@@ -790,30 +616,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: 'rgba(168, 198, 255, 0.25)',
-  },
-  progressCardElevated: {
-    borderRadius: 12,
-    backgroundColor: 'rgba(22, 26, 36, 0.65)',
-    shadowColor: '#050a18',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
-    shadowRadius: 18,
-    elevation: 16,
-  },
-  progressCard: {
-    backgroundColor: 'rgba(58, 64, 82, 0.4)',
-    borderRadius: 11,
-    padding: 18,
-    position: 'relative',
-    overflow: 'hidden',
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderBottomWidth: 2,
-    borderTopColor: 'rgba(179, 200, 255, 0.22)',
-    borderLeftColor: 'rgba(179, 200, 255, 0.1)',
-    borderRightColor: 'rgba(0, 0, 0, 0.3)',
-    borderBottomColor: 'rgba(0, 0, 0, 0.48)',
   },
   progressCardDecoration: {
     position: 'absolute',
@@ -838,93 +640,50 @@ const styles = StyleSheet.create({
   },
   progressLabel: {
     fontSize: 12,
-    fontFamily: 'WorkSans-Regular',
+    fontFamily: 'Default',
     color: '#A8B0BD',
     lineHeight: 18,
     letterSpacing: 0.15,
     flex: 1,
   },
-  pageIndicator: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-    marginTop: 4,
-    marginBottom: 12,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#595959',
-  },
-  activeDot: {
-    backgroundColor: '#C0D1FF',
-  },
-  outfitSectionWrapper: {
+  outfitSectionOuter: {
     marginHorizontal: LAYOUT.paddingHorizontal,
-    marginTop: 4,
+    marginTop: 2,
     marginBottom: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(235, 252, 183, 0.25)',
-    backgroundColor: 'rgba(63, 63, 63, 0.25)',
-    overflow: 'hidden',
-  },
-  outfitSectionElevated: {
-    marginHorizontal: LAYOUT.paddingHorizontal,
-    marginTop: 4,
-    marginBottom: 12,
-    borderRadius: 12,
-    backgroundColor: 'rgba(22, 24, 18, 0.72)',
-    shadowColor: '#0a0c06',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.48,
-    shadowRadius: 18,
-    elevation: 16,
-  },
-  outfitSectionFace: {
-    borderRadius: 11,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(52, 54, 42, 0.4)',
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderRightWidth: 1,
-    borderBottomWidth: 2,
-    borderTopColor: 'rgba(235, 252, 183, 0.2)',
-    borderLeftColor: 'rgba(235, 252, 183, 0.1)',
-    borderRightColor: 'rgba(0, 0, 0, 0.3)',
-    borderBottomColor: 'rgba(0, 0, 0, 0.45)',
   },
   outfitSectionInner: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 18,
+    paddingHorizontal: 4,
+    paddingTop: 2,
+    paddingBottom: 4,
   },
   sectionHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   sectionTitle: {
-    fontSize: 19,
-    fontFamily: 'Caladea-Regular',
-    color: '#F8FAFC',
-    letterSpacing: -0.2,
-    lineHeight: 24,
+    fontSize: 17,
+    fontFamily: 'System',
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: -0.24,
+    lineHeight: 22,
   },
   sectionDate: {
-    marginTop: 7,
-    fontSize: 12,
-    fontFamily: 'WorkSans-Medium',
-    color: 'rgba(179, 200, 255, 0.95)',
-    letterSpacing: 0.4,
+    marginTop: 4,
+    fontSize: 13,
+    fontFamily: 'System',
+    fontWeight: '400',
+    color: IOS_SECONDARY_LABEL,
   },
   calendarButton: {
-    width: 40,
-    height: 40,
+    width: 36,
+    height: 36,
+    borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
   calendarRow: {
     flexDirection: 'row',
@@ -964,31 +723,26 @@ const styles = StyleSheet.create({
   },
   dayNumber: {
     fontSize: 12,
-    fontFamily: 'WorkSans-Medium',
+    fontFamily: 'Default',
+    fontWeight: '500',
     color: '#F1F5F9',
     marginBottom: 4,
     letterSpacing: 0.2,
   },
   dayName: {
     fontSize: 11,
-    fontFamily: 'WorkSans-Regular',
+    fontFamily: 'Default',
     color: 'rgba(255, 255, 255, 0.75)',
     marginBottom: 10,
     letterSpacing: 0.25,
   },
   currentDayNumber: {
-    fontWeight: 'bold',
-    color: '#ffffff',
-    textShadowColor: 'rgba(255, 255, 255, 0.25)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
   currentDayName: {
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#FFFFFF',
-    textShadowColor: 'rgba(255, 255, 255, 0.25)',
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 10,
   },
   outfitImageContainer: {
     width: OUTFIT_SLOT_WIDTH,
@@ -999,16 +753,16 @@ const styles = StyleSheet.create({
   addOutfitButton: {
     width: OUTFIT_SLOT_WIDTH,
     height: OUTFIT_SLOT_HEIGHT,
-    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(40, 40, 40, 0.5)',
   },
-  addOutfitCircle: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: '#B3C8FF',
+  outfitWeekAddFrame: {
+    width: OUTFIT_SLOT_WIDTH,
+    height: OUTFIT_SLOT_HEIGHT,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: HAIRLINE,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1042,52 +796,9 @@ const styles = StyleSheet.create({
   },
   logoTagline: {
     fontSize: 12,
-    fontFamily: 'WorkSans-Regular',
+    fontFamily: 'Default',
     color: '#9CA3AF',
     letterSpacing: 0.2,
     opacity: 0.75,
-  },
-  cameraContainer: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-  camera: {
-    flex: 1,
-  },
-  cameraControls: {
-    flex: 1,
-    backgroundColor: 'transparent',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    paddingHorizontal: 40,
-    paddingBottom: 60,
-  },
-  cameraButton: {
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 25,
-  },
-  cameraButtonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  captureButton: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 4,
-    borderColor: '#ffffff',
-  },
-  captureButtonInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#ffffff',
   },
 });

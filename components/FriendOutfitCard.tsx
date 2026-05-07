@@ -183,7 +183,8 @@ const styles = StyleSheet.create({
   },
   friendName: {
     fontSize: 14,
-    fontFamily: 'WorkSans-SemiBold',
+    fontFamily: 'Default',
+    fontWeight: '600',
     color: '#FFFFFF',
     flex: 1,
   },
@@ -194,7 +195,7 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 11,
-    fontFamily: 'WorkSans-Regular',
+    fontFamily: 'Default',
     color: '#6B7280',
   },
   outfitContainer: {
@@ -244,7 +245,8 @@ const styles = StyleSheet.create({
   },
   likesCount: {
     fontSize: 13,
-    fontFamily: 'WorkSans-Medium',
+    fontFamily: 'Default',
+    fontWeight: '500',
     color: '#9CA3AF',
     minWidth: 20,
     textAlign: 'right',

@@ -6,6 +6,7 @@ import {
   StyleSheet,
   ScrollView,
   TextInput,
+  Platform,
 } from 'react-native';
 import {
   SafeAreaView,
@@ -18,15 +19,15 @@ import {
   Caladea_400Regular,
   Caladea_700Bold,
 } from '@expo-google-fonts/caladea';
-import {
-  WorkSans_400Regular,
-  WorkSans_500Medium,
-  WorkSans_600SemiBold,
-} from '@expo-google-fonts/work-sans';
 import * as Haptics from 'expo-haptics';
-import { Platform } from 'react-native';
 import { constrainedWidth } from '@/constants/layout';
-import { onboardingScreenStyles as os } from '@/constants/onboardingScreens';
+import {
+  onboardingScreenStyles as os,
+  ONBOARDING_IN_FLOW_TOP as flowTop,
+} from '@/constants/onboardingScreens';
+
+const iosNativeFont =
+  Platform.OS === 'ios' ? ({ fontFamily: 'System' } as const) : null;
 
 const styleOptions = [
   'Y2K',
@@ -55,9 +56,6 @@ export default function PersonalStyleScreen() {
   const [fontsLoaded] = useFonts({
     'Caladea-Regular': Caladea_400Regular,
     'Caladea-Bold': Caladea_700Bold,
-    'WorkSans-Regular': WorkSans_400Regular,
-    'WorkSans-Medium': WorkSans_500Medium,
-    'WorkSans-SemiBold': WorkSans_600SemiBold,
   });
 
   const handleBack = () => {
@@ -73,7 +71,6 @@ export default function PersonalStyleScreen() {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    console.log('Continue pressed with styles:', selectedStyles);
     router.push('/NAV');
   };
 
@@ -105,24 +102,28 @@ export default function PersonalStyleScreen() {
   return (
     <SafeAreaView style={os.container} edges={['top', 'left', 'right']}>
       <View style={[os.innerContainer, { width: constrainedWidth }]}>
-        <View style={os.headerBar}>
-          <TouchableOpacity
-            style={os.backButton}
-            onPress={handleBack}
-            activeOpacity={0.6}
-          >
-            <ChevronLeft size={24} color="#FFFFFF" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleSkip} activeOpacity={0.6}>
-            <Text style={os.skipButtonText}>Skip</Text>
-          </TouchableOpacity>
-        </View>
-
         <ScrollView
           style={os.content}
-          contentContainerStyle={os.scrollContent}
+          contentContainerStyle={[os.scrollContent, styles.scrollContent]}
           showsVerticalScrollIndicator={false}
         >
+          <View style={[os.headerBarInFlow, styles.headerBarShiftUp]}>
+            <TouchableOpacity
+              style={os.backButton}
+              onPress={handleBack}
+              activeOpacity={0.6}
+            >
+              <ChevronLeft size={24} color="#FFFFFF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={os.skipButton}
+              onPress={handleSkip}
+              activeOpacity={0.6}
+            >
+              <Text style={os.skipButtonText}>Skip</Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={os.titleContainer}>
             <Text style={os.title}>Personal Style</Text>
             <Text style={os.subtitle}>
@@ -177,6 +178,7 @@ export default function PersonalStyleScreen() {
           style={[
             os.bottomContainer,
             { paddingBottom: Math.max(insets.bottom, 12) },
+            styles.bottomBar,
           ]}
         >
           <TouchableOpacity
@@ -185,12 +187,13 @@ export default function PersonalStyleScreen() {
               selectedStyles.length === 0 && styles.continueButtonDisabled,
             ]}
             onPress={handleContinue}
-            activeOpacity={selectedStyles.length > 0 ? 0.8 : 1}
+            activeOpacity={selectedStyles.length > 0 ? 0.75 : 1}
             disabled={selectedStyles.length === 0}
           >
             <Text
               style={[
                 styles.continueButtonText,
+                iosNativeFont,
                 selectedStyles.length === 0 && styles.continueButtonTextDisabled,
               ]}
             >
@@ -204,6 +207,13 @@ export default function PersonalStyleScreen() {
 }
 
 const styles = StyleSheet.create({
+  headerBarShiftUp: {
+    marginTop: flowTop.headerShiftMarginTop,
+    marginBottom: flowTop.headerShiftMarginBottom,
+  },
+  scrollContent: {
+    paddingTop: flowTop.scrollPaddingTop,
+  },
   searchContainer: {
     marginBottom: 32,
   },
@@ -257,22 +267,28 @@ const styles = StyleSheet.create({
     color: '#000000',
     fontWeight: 'bold',
   },
+  bottomBar: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    paddingTop: 16,
+  },
   continueButton: {
+    width: '100%',
+    minHeight: 52,
     backgroundColor: '#A8B3FF',
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 15,
+    borderRadius: 14,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 4,
   },
   continueButtonText: {
     fontSize: 16,
+    fontFamily: 'Caladea-Regular',
     color: '#000000',
     letterSpacing: 0.2,
   },

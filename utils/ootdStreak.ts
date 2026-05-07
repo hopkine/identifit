@@ -1,4 +1,5 @@
 import type { OOTD } from '@/types/ootd';
+import { formatLocalDateKey } from '@/utils/localDateKey';
 
 /**
  * Consecutive calendar days (from today, or yesterday if today is empty)
@@ -16,7 +17,7 @@ export function calculateOOTDStreak(userOOTDs: OOTD[]): number {
   let currentDate = new Date(today);
 
   for (let i = 0; i < 365; i++) {
-    const dateString = currentDate.toISOString().split('T')[0];
+    const dateString = formatLocalDateKey(currentDate);
     const hasOOTDForDate = sortedOOTDs.some((ootd) => ootd.date === dateString);
 
     if (hasOOTDForDate) {

@@ -1,22 +1,23 @@
 import { Tabs } from 'expo-router';
-import { House, Compass, Bookmark, Shirt, User, Users } from 'lucide-react-native';
+import { House, Compass, Star, Users } from 'lucide-react-native';
 import { LAYOUT } from '@/constants/layout';
-import { OOTDProvider } from '@/hooks/useOOTD';
+import ProfileTabIcon from '@/components/ProfileTabIcon';
+import SavedTabIcon from '@/components/SavedTabIcon';
 
 export default function TabLayout() {
   return (
-    <OOTDProvider>
     <Tabs
+      initialRouteName="home"
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: LAYOUT.backgroundColor,
+          backgroundColor: LAYOUT.navScreenBackground,
           borderTopWidth: 0,
           height: 90,
           paddingBottom: 30,
           paddingTop: 10,
         },
-        tabBarActiveTintColor: '#8B7CF6',
+        tabBarActiveTintColor: '#C0D1FF',
         tabBarInactiveTintColor: '#6B7280',
         tabBarShowLabel: false,
       }}>
@@ -24,7 +25,7 @@ export default function TabLayout() {
         name="saved"
         options={{
           tabBarIcon: ({ size, color }) => (
-            <Bookmark size={size} color={color} />
+            <SavedTabIcon width={size} height={size} color={color} />
           ),
         }}
       />
@@ -32,12 +33,12 @@ export default function TabLayout() {
         name="closet"
         options={{
           tabBarIcon: ({ size, color }) => (
-            <Shirt size={size} color={color} />
+            <Star size={size} color={color} />
           ),
         }}
       />
       <Tabs.Screen
-        name="index"
+        name="home"
         options={{
           tabBarIcon: ({ size, color }) => (
             <House size={size} color={color} />
@@ -56,7 +57,7 @@ export default function TabLayout() {
         name="profile"
         options={{
           tabBarIcon: ({ size, color }) => (
-            <User size={size} color={color} />
+            <ProfileTabIcon width={size} height={size} color={color} />
           ),
         }}
       />
@@ -79,6 +80,5 @@ export default function TabLayout() {
         }}
       />
     </Tabs>
-    </OOTDProvider>
   );
 }

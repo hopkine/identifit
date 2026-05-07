@@ -8,7 +8,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useFonts, Caladea_400Regular, Caladea_700Bold } from '@expo-google-fonts/caladea';
-import { WorkSans_400Regular, WorkSans_500Medium, WorkSans_600SemiBold } from '@expo-google-fonts/work-sans';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 import { currentUser } from '@/data/ootd';
@@ -20,9 +19,6 @@ export default function OnboardingScreen() {
   const [fontsLoaded] = useFonts({
     'Caladea-Regular': Caladea_400Regular,
     'Caladea-Bold': Caladea_700Bold,
-    'WorkSans-Regular': WorkSans_400Regular,
-    'WorkSans-Medium': WorkSans_500Medium,
-    'WorkSans-SemiBold': WorkSans_600SemiBold,
   });
 
   const handleContinue = () => {

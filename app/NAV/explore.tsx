@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -6,181 +6,298 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
-  TextInput,
   Image,
+  Platform,
 } from 'react-native';
-import { Search, SlidersHorizontal, Plus } from 'lucide-react-native';
 import {
-  useFonts,
-  Caladea_400Regular,
-  Caladea_700Bold,
-} from '@expo-google-fonts/caladea';
-import {
-  WorkSans_400Regular,
-  WorkSans_500Medium,
-  WorkSans_600SemiBold,
-} from '@expo-google-fonts/work-sans';
+  SlidersHorizontal,
+  Bell,
+  Share2,
+  UserPlus,
+  Music,
+  Send,
+  MessageCircle,
+  Smile,
+  MessageSquare,
+} from 'lucide-react-native';
 import FilterSortSheet, { type FilterState } from '@/components/FilterSortSheet';
-import { LAYOUT, constrainedWidth } from '@/constants/layout';
+import { LAYOUT } from '@/constants/layout';
+import { useOOTD } from '@/hooks/useOOTD';
+import { SymbolView } from 'expo-symbols';
+import { currentUser } from '@/data/ootd';
 
-// Outfit images from recs folder
-const outfitImages = [
-  require('@/assets/images/recs/image 64 (1).png'),
-  require('@/assets/images/recs/image 60 (1).png'),
-  require('@/assets/images/recs/image 65 (1).png'),
-  require('@/assets/images/recs/image 62 (1).png'),
-  require('@/assets/images/recs/image 61 (1).png'),
-  require('@/assets/images/recs/_ (7) 1 (1).png'),
-  require('@/assets/images/recs/_ (6) 1 (1).png'),
-  require('@/assets/images/recs/_ (4) 1 (1).png'),
+const FEED_EDGE_INSET = 10;
+const PHOTO_CORNER_RADIUS = 22;
+
+type FeedComment = {
+  id: string;
+  author: string;
+  text: string;
+};
+
+type FeedItem = {
+  id: string;
+  imageSource: any;
+  likeTargetId?: string;
+  username: string;
+  timestamp: string;
+  caption: string;
+  comments: FeedComment[];
+};
+
+const captionPool = [
+  'today fit check',
+  'keeping it comfy but put together',
+  'late afternoon campus fit',
+  'trying this silhouette for spring',
+];
+const forYouFits = [
+  require('@/assets/images/recs/rec-white-halter-top-black-pants.png'),
+  require('@/assets/images/recs/rec-striped-offshoulder-white-pants.png'),
+  require('@/assets/images/recs/rec-mesh-tank-denim-shorts-cap.png'),
+  require('@/assets/images/recs/rec-white-graphic-tee-black-wide-pants.png'),
+  require('@/assets/images/recs/rec-black-tank-ruffle-hem-jeans.png'),
+  require('@/assets/images/recs/rec-white-bucket-hat-black-skirt.png'),
+  require('@/assets/images/recs/rec-cropped-knit-wide-jeans.png'),
 ];
 
-const nearMeOutfitImages = [
-  require('@/assets/images/near-me/01.png'),
-  require('@/assets/images/near-me/02.png'),
-  require('@/assets/images/near-me/03.png'),
-  require('@/assets/images/near-me/04.png'),
+const commentPool: FeedComment[][] = [
+  [
+    { id: 'c1', author: 'vincentiskool', text: 'this unit gives me nostalgia' },
+    { id: 'c2', author: 'michaelk', text: 'fit is so clean' },
+    { id: 'c3', author: 'lyla', text: 'where is the jacket from?' },
+  ],
+  [
+    { id: 'c4', author: 'han', text: 'obsessed with this combo' },
+    { id: 'c5', author: 'noah', text: 'need these pants asap' },
+  ],
+  [
+    { id: 'c6', author: 'erika', text: 'the colors are perfect together' },
+    { id: 'c7', author: 'maya_style', text: 'you always eat' },
+  ],
+  [
+    { id: 'c8', author: 'alex_minimal', text: 'clean lines as always' },
+    { id: 'c9', author: 'sam_vintage', text: 'ok this one is my fav' },
+    { id: 'c10', author: 'zoe_street', text: 'drop the full fit details pls' },
+  ],
 ];
 
 export default function ExploreScreen() {
-  const [activeTab, setActiveTab] = useState<'forYou' | 'friends'>('forYou');
-  const [searchText, setSearchText] = useState('');
+  const { getAllFriendsOOTDs } = useOOTD();
+  const [activeTab, setActiveTab] = useState<'friends' | 'forYou'>('friends');
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [appliedShowNearMe, setAppliedShowNearMe] = useState(false);
-
-  const [fontsLoaded] = useFonts({
-    'Caladea-Regular': Caladea_400Regular,
-    'Caladea-Bold': Caladea_700Bold,
-    'WorkSans-Regular': WorkSans_400Regular,
-    'WorkSans-Medium': WorkSans_500Medium,
-    'WorkSans-SemiBold': WorkSans_600SemiBold,
-  });
 
   const handleApplyFilters = (filters: FilterState) => {
     setAppliedShowNearMe(filters.showNearMe);
   };
 
-  if (!fontsLoaded) {
-    return null;
-  }
+  const feedItems = useMemo<FeedItem[]>(() => {
+    if (activeTab === 'forYou') {
+      const source = appliedShowNearMe
+        ? forYouFits.slice(0, Math.min(2, forYouFits.length))
+        : forYouFits;
+      return source.map((imageSource, index) => ({
+        id: `foryou-${index}`,
+        imageSource,
+        username: currentUser.username,
+        timestamp: '18h ago',
+        caption: captionPool[index % captionPool.length],
+        comments: commentPool[index % commentPool.length],
+      }));
+    }
 
-  const renderMasonryGrid = () => {
-    const leftColumn = [];
-    const rightColumn = [];
-
-    const gridImages = appliedShowNearMe ? nearMeOutfitImages : outfitImages;
-
-    gridImages.forEach((image, index) => {
-      const height = index % 3 === 0 ? 280 : index % 2 === 0 ? 320 : 240;
-      const imageComponent = (
-        <TouchableOpacity
-          key={index}
-          style={[styles.gridItem, { height }]}
-          activeOpacity={0.8}
-        >
-          <Image source={image} style={styles.gridImage} />
-        </TouchableOpacity>
-      );
-
-      if (index % 2 === 0) {
-        leftColumn.push(imageComponent);
-      } else {
-        rightColumn.push(imageComponent);
-      }
-    });
-
-    return (
-      <View style={styles.masonryContainer}>
-        <View style={styles.masonryColumn}>{leftColumn}</View>
-        <View style={styles.masonryColumn}>{rightColumn}</View>
-      </View>
-    );
-  };
+    const all = getAllFriendsOOTDs();
+    const source = appliedShowNearMe ? all.slice(0, Math.min(2, all.length)) : all;
+    return source.map((ootd, index) => ({
+      id: ootd.id,
+      imageSource:
+        typeof ootd.imageUri === 'string' ? { uri: ootd.imageUri } : ootd.imageUri,
+      likeTargetId: ootd.id,
+      username: currentUser.username,
+      timestamp: '18h ago',
+      caption: captionPool[index % captionPool.length],
+      comments: commentPool[index % commentPool.length],
+    }));
+  }, [activeTab, appliedShowNearMe, getAllFriendsOOTDs]);
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.innerWrapper}>
-      {/* Header — filter control lives here so it isn’t clipped on narrow iOS widths */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Explore</Text>
-        <TouchableOpacity
-          style={styles.headerFilterButton}
-          onPress={() => setShowFilterSheet(true)}
-          activeOpacity={0.75}
-          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        {/* Header — utility icons only, no centered wordmark */}
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <TouchableOpacity
+              style={styles.headerToolIcon}
+              activeOpacity={0.75}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Share"
+            >
+              <Share2 size={20} color="#FFFFFF" strokeWidth={2} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerToolIcon}
+              activeOpacity={0.75}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Add friends"
+            >
+              <UserPlus size={20} color="#FFFFFF" strokeWidth={2} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerToolIcon}
+              activeOpacity={0.75}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              accessibilityRole="button"
+              accessibilityLabel="Audio"
+            >
+              <Music size={20} color="#FFFFFF" strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              onPress={() => setShowFilterSheet(true)}
+              activeOpacity={0.75}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Filters"
+            >
+              <SlidersHorizontal size={20} color="#FFFFFF" strokeWidth={2} />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.headerIconButton}
+              activeOpacity={0.75}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              accessibilityRole="button"
+              accessibilityLabel="Notifications"
+            >
+              <Bell size={20} color="#FFFFFF" strokeWidth={2} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
         >
-          <SlidersHorizontal size={22} color="#FFFFFF" strokeWidth={2} />
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Search Bar */}
-        <View style={styles.searchContainer}>
-          <View style={styles.searchInputContainer}>
-            <Search size={18} color="#6A6A6A" />
-            <TextInput
-              style={styles.searchInput}
-              placeholder="Search"
-              placeholderTextColor="#6A6A6A"
-              value={searchText}
-              onChangeText={setSearchText}
-            />
-          </View>
-        </View>
-
-        {/* Tab Navigation */}
-        <View style={styles.tabContainer}>
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'forYou' && styles.activeTab]}
-            onPress={() => setActiveTab('forYou')}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === 'forYou' && styles.activeTabText,
-              ]}
+          {/* Segmented tabs */}
+          <View style={styles.tabContainer}>
+            <TouchableOpacity
+              style={styles.tab}
+              onPress={() => setActiveTab('friends')}
+              activeOpacity={0.85}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: activeTab === 'friends' }}
             >
-              For You
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === 'friends' && styles.activeTabText,
+                ]}
+              >
+                My Friends
+              </Text>
+            </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.tab, activeTab === 'friends' && styles.activeTab]}
-            onPress={() => setActiveTab('friends')}
-          >
-            <Text
-              style={[
-                styles.tabText,
-                activeTab === 'friends' && styles.activeTabText,
-              ]}
+            <TouchableOpacity
+              style={styles.tab}
+              onPress={() => setActiveTab('forYou')}
+              activeOpacity={0.85}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: activeTab === 'forYou' }}
             >
-              Your Friends
-            </Text>
-          </TouchableOpacity>
-
-          <View style={[styles.tab, styles.sparklesPill]}>
-            <Text style={styles.sparkleEmoji}>✨✨✨</Text>
+              <Text
+                style={[
+                  styles.tabText,
+                  activeTab === 'forYou' && styles.activeTabText,
+                ]}
+              >
+                For You
+              </Text>
+            </TouchableOpacity>
           </View>
-        </View>
 
-        {/* Masonry Grid */}
-        {renderMasonryGrid()}
-      </ScrollView>
+          <View style={styles.feedContainer}>
+            {feedItems.map((item, index) => (
+              <View key={`${activeTab}-${item.id}-${index}`} style={styles.feedCard}>
+                <View style={styles.feedHeaderRow}>
+                  <View style={styles.avatarBlank} />
+                  <View style={styles.feedHeaderText}>
+                    <Text style={styles.usernameText}>{item.username}</Text>
+                    <Text style={styles.metaText}>{item.timestamp}</Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.moreButton}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel="More"
+                  >
+                    <SymbolView
+                      name="ellipsis"
+                      size={18}
+                      tintColor="#FFFFFF"
+                    />
+                  </TouchableOpacity>
+                </View>
 
-      <TouchableOpacity
-        style={styles.floatingPlusFab}
-        activeOpacity={0.88}
-      >
-        <Plus size={30} color="#1a1a1a" strokeWidth={2.25} />
-      </TouchableOpacity>
+                <View style={styles.photoShell}>
+                  <Image source={item.imageSource} style={styles.feedImage} resizeMode="cover" />
+                  <View style={styles.photoOverlayActions} pointerEvents="box-none">
+                    <TouchableOpacity
+                      style={styles.photoOverlayIconHit}
+                      activeOpacity={0.75}
+                      accessibilityRole="button"
+                      accessibilityLabel="Send"
+                    >
+                      <Send size={22} color="#FFFFFF" strokeWidth={2} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.photoOverlayIconHit}
+                      activeOpacity={0.75}
+                      accessibilityRole="button"
+                      accessibilityLabel="Comments"
+                    >
+                      <MessageCircle size={22} color="#FFFFFF" strokeWidth={2} />
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={styles.photoOverlayIconHit}
+                      activeOpacity={0.75}
+                      accessibilityRole="button"
+                      accessibilityLabel="React"
+                    >
+                      <Smile size={22} color="#FFFFFF" strokeWidth={2} />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <TouchableOpacity
+                  style={styles.addCommentRow}
+                  activeOpacity={0.75}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add a comment"
+                >
+                  <MessageSquare
+                    size={17}
+                    color="rgba(255,255,255,0.55)"
+                    strokeWidth={2}
+                  />
+                  <Text style={styles.addCommentText}>Add a comment...</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
 
       {/* Filter Sheet */}
       <FilterSortSheet
         visible={showFilterSheet}
         onClose={() => setShowFilterSheet(false)}
         onApplyFilters={handleApplyFilters}
-        itemCountDefault={outfitImages.length}
-        itemCountNearMe={nearMeOutfitImages.length}
+        itemCountDefault={feedItems.length}
+        itemCountNearMe={Math.min(2, feedItems.length)}
       />
       </View>
     </SafeAreaView>
@@ -190,117 +307,169 @@ export default function ExploreScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: LAYOUT.backgroundColor,
+    backgroundColor: LAYOUT.navScreenBackground,
     alignItems: 'center',
   },
   innerWrapper: {
     flex: 1,
     width: '100%',
-    maxWidth: constrainedWidth,
+    maxWidth: '100%',
+    backgroundColor: LAYOUT.navScreenBackground,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: LAYOUT.paddingHorizontal,
-    paddingTop: 20,
-    paddingBottom: 16,
+    paddingHorizontal: FEED_EDGE_INSET,
+    paddingTop: 12,
+    paddingBottom: 14,
   },
-  headerTitle: {
-    fontSize: 25,
-    fontFamily: 'Caladea-Bold',
-    color: '#FFFFFF',
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    flexShrink: 0,
   },
-  headerFilterButton: {
-    width: 44,
-    height: 44,
+  headerToolIcon: {
+    paddingVertical: 4,
+  },
+  headerRight: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 10,
+    flexShrink: 0,
+  },
+  headerIconButton: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   content: {
     flex: 1,
-    paddingHorizontal: LAYOUT.paddingHorizontal,
   },
-  searchContainer: {
-    marginBottom: 24,
-  },
-  searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#424242',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 16,
-    fontFamily: 'System',
-    color: '#FFFFFF',
+  contentContainer: {
+    paddingBottom: 8,
   },
   tabContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    gap: 18,
+    justifyContent: 'center',
+    marginBottom: 18,
+    marginTop: 6,
+    gap: 22,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
   },
   tab: {
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 20,
-    backgroundColor: 'transparent',
-  },
-  activeTab: {
-    backgroundColor: '#A8B3FF',
+    alignItems: 'center',
+    paddingBottom: 8,
   },
   tabText: {
     fontSize: 15,
     fontFamily: 'System',
-    color: '#FFFFFF',
+    fontWeight: '600',
+    color: 'rgba(255, 255, 255, 0.5)',
   },
   activeTabText: {
-    color: '#000000',
+    color: '#FFFFFF',
   },
-  sparklesPill: {
-    alignItems: 'center',
-    justifyContent: 'center',
+  feedContainer: {
+    paddingBottom: 120,
+    gap: 28,
   },
-  sparkleEmoji: {
-    fontSize: 14,
+  feedCard: {
+    backgroundColor: 'transparent',
   },
-  masonryContainer: {
+  feedHeaderRow: {
     flexDirection: 'row',
-    gap: 12,
-    paddingBottom: 100,
-  },
-  masonryColumn: {
-    flex: 1,
-    gap: 12,
-  },
-  gridItem: {
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  gridImage: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  floatingPlusFab: {
-    position: 'absolute',
-    bottom: 96,
-    right: LAYOUT.paddingHorizontal,
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#B3C8FF',
-    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 10,
-    elevation: 12,
+    paddingLeft: FEED_EDGE_INSET,
+    paddingRight: FEED_EDGE_INSET,
+    paddingBottom: 12,
+  },
+  avatarBlank: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  feedHeaderText: {
+    flex: 1,
+    paddingLeft: 10,
+    minWidth: 0,
+    paddingRight: 8,
+    justifyContent: 'center',
+  },
+  usernameText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontFamily: 'System',
+    fontWeight: '700',
+    letterSpacing: -0.2,
+  },
+  metaText: {
+    color: 'rgba(255, 255, 255, 0.55)',
+    fontSize: 13,
+    marginTop: 2,
+    fontFamily: 'System',
+    fontWeight: Platform.OS === 'ios' ? '400' : '500',
+  },
+  moreButton: {
+    width: 34,
+    height: 34,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 17,
+  },
+  photoShell: {
+    marginHorizontal: FEED_EDGE_INSET,
+    borderRadius: PHOTO_CORNER_RADIUS,
+    overflow: 'hidden',
+    backgroundColor: '#0a0a0a',
+    position: 'relative',
+    ...(Platform.OS === 'ios'
+      ? {
+          shadowColor: '#000',
+          shadowOffset: { width: 0, height: 12 },
+          shadowOpacity: 0.35,
+          shadowRadius: 20,
+        }
+      : { elevation: 8 }),
+  },
+  feedImage: {
+    width: '100%',
+    height: 440,
+  },
+  photoOverlayActions: {
+    position: 'absolute',
+    right: 12,
+    bottom: 14,
+    alignItems: 'center',
+    gap: 20,
+  },
+  photoOverlayIconHit: {
+    padding: 4,
+  },
+  addCommentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 12,
+    marginBottom: 4,
+    paddingLeft: FEED_EDGE_INSET + 2,
+    paddingRight: FEED_EDGE_INSET,
+  },
+  addCommentText: {
+    color: 'rgba(255, 255, 255, 0.45)',
+    fontSize: 14,
+    fontFamily: 'System',
+    fontWeight: Platform.OS === 'ios' ? '400' : '400',
   },
 });

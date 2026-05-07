@@ -5,14 +5,15 @@ import {
   TextInput,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { ChevronLeft } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { ONBOARDING_HEADER_TOP } from '@/constants/onboardingScreens';
+import { onboardingScreenStyles as os } from '@/constants/onboardingScreens';
 
 export default function Login() {
   const router = useRouter();
@@ -24,7 +25,7 @@ export default function Login() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={styles.keyboardView}
@@ -32,20 +33,23 @@ export default function Login() {
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
           <View style={styles.innerContainer}>
-            {/* Top Bar */}
-            <View style={styles.topBar}>
+            <View style={styles.headerRow}>
               <TouchableOpacity
                 onPress={() => router.back()}
-                style={styles.backButton}
+                style={os.backButton}
+                activeOpacity={0.6}
               >
-                <Text style={styles.backIcon}>←</Text>
+                <ChevronLeft size={24} color="#FFFFFF" />
               </TouchableOpacity>
-              <Text style={styles.title}>Sign In</Text>
+
+              <Text style={styles.headerTitle}>Sign In</Text>
+
+              <View style={styles.headerRightSpacer} />
             </View>
 
-            {/* Center Content */}
             <View style={styles.centerContent}>
               <View style={styles.logoContainer}>
                 <Image
@@ -55,7 +59,6 @@ export default function Login() {
                 />
               </View>
 
-              {/* Form */}
               <View style={styles.form}>
                 <View style={styles.inputGroup}>
                   <Text style={styles.label}>Email</Text>
@@ -93,12 +96,9 @@ export default function Login() {
                 </TouchableOpacity>
 
                 <View style={styles.signUpContainer}>
-                  <TouchableOpacity
-                    onPress={() => {}}
-                    activeOpacity={0.7}
-                  >
+                  <TouchableOpacity onPress={() => {}} activeOpacity={0.7}>
                     <Text style={styles.signUpText}>
-                      Don't have an account? Sign up
+                      Don&apos;t have an account? Sign up
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -109,7 +109,7 @@ export default function Login() {
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
@@ -128,28 +128,24 @@ const styles = StyleSheet.create({
     maxWidth: 448,
     width: '100%',
     alignSelf: 'center',
+    paddingTop: 12,
   },
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: ONBOARDING_HEADER_TOP,
-    marginBottom: 32,
+  headerRow: {
+    ...os.headerBarInFlow,
+    marginTop: 0,
+    marginBottom: 22,
+    paddingHorizontal: 0,
   },
-  backButton: {
+  headerTitle: {
+    flex: 1,
+    textAlign: 'center',
+    color: '#FFFFFF',
+    fontSize: 16,
+    letterSpacing: 0.2,
+  },
+  headerRightSpacer: {
     width: 40,
     height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  backIcon: {
-    fontSize: 24,
-    color: '#FFFFFF',
-  },
-  title: {
-    color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '600',
-    marginLeft: 16,
   },
   centerContent: {
     flex: 1,
@@ -172,6 +168,7 @@ const styles = StyleSheet.create({
   label: {
     color: '#FFFFFF',
     fontSize: 14,
+    fontFamily: 'Default',
     fontWeight: '500',
     marginBottom: 8,
   },
@@ -197,7 +194,6 @@ const styles = StyleSheet.create({
   signInButtonText: {
     color: '#000000',
     fontSize: 16,
-    fontWeight: '500',
   },
   signUpContainer: {
     alignItems: 'center',
@@ -208,3 +204,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
+

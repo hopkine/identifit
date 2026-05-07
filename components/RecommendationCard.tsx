@@ -150,7 +150,8 @@ const styles = StyleSheet.create({
   },
   style: {
     fontSize: 12,
-    fontFamily: 'WorkSans-Medium',
+    fontFamily: 'Default',
+    fontWeight: '500',
     color: '#A8B3FF',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
@@ -164,7 +165,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 14,
-    fontFamily: 'WorkSans-Regular',
+    fontFamily: 'Default',
     color: '#D1D5DB',
     lineHeight: 20,
     marginBottom: 16,
@@ -174,7 +175,8 @@ const styles = StyleSheet.create({
   },
   itemsTitle: {
     fontSize: 14,
-    fontFamily: 'WorkSans-SemiBold',
+    fontFamily: 'Default',
+    fontWeight: '600',
     color: '#FFFFFF',
     marginBottom: 8,
   },
@@ -191,7 +193,7 @@ const styles = StyleSheet.create({
   },
   itemText: {
     fontSize: 12,
-    fontFamily: 'WorkSans-Regular',
+    fontFamily: 'Default',
     color: '#C0D1FF',
   },
   colorsContainer: {
@@ -199,7 +201,8 @@ const styles = StyleSheet.create({
   },
   colorsTitle: {
     fontSize: 14,
-    fontFamily: 'WorkSans-SemiBold',
+    fontFamily: 'Default',
+    fontWeight: '600',
     color: '#FFFFFF',
     marginBottom: 8,
   },
@@ -226,7 +229,7 @@ const styles = StyleSheet.create({
   },
   colorText: {
     fontSize: 12,
-    fontFamily: 'WorkSans-Regular',
+    fontFamily: 'Default',
     color: '#C0D1FF',
   },
   weatherContainer: {
@@ -234,7 +237,8 @@ const styles = StyleSheet.create({
   },
   weatherTitle: {
     fontSize: 14,
-    fontFamily: 'WorkSans-SemiBold',
+    fontFamily: 'Default',
+    fontWeight: '600',
     color: '#FFFFFF',
     marginBottom: 8,
   },
@@ -245,7 +249,7 @@ const styles = StyleSheet.create({
   },
   weatherTag: {
     fontSize: 12,
-    fontFamily: 'WorkSans-Regular',
+    fontFamily: 'Default',
     color: '#9CA3AF',
     backgroundColor: '#3A3A3C',
     borderRadius: 12,
