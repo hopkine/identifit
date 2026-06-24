@@ -444,6 +444,16 @@ export default function HomeScreen() {
         <View style={[styles.groupedCard, styles.outfitSectionOuter]}>
           <View style={styles.outfitSectionInner}>{outfitWeekSectionInner}</View>
         </View>
+
+        {/* Bottom spoiler — scroll to reveal */}
+        <View style={styles.spoilerFooter}>
+          <View style={styles.spoilerRule} />
+          <View style={styles.logoTeaser}>
+            <Sparkle width={50} height={50} />
+            <Text style={styles.logoText}>identifit</Text>
+            <Text style={styles.logoTagline}>Your style, identified</Text>
+          </View>
+        </View>
       </ScrollView>
       </View>
     </SafeAreaView>
@@ -522,7 +532,7 @@ const styles = StyleSheet.create({
   groupedCard: {
     backgroundColor: GROUPED_CARD_BG,
     borderRadius: 12,
-    paddingVertical: 16,
+    paddingVertical: 14,
     paddingHorizontal: 14,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: HAIRLINE,
@@ -640,11 +650,40 @@ const styles = StyleSheet.create({
   outfitWeekAddFrame: {
     width: OUTFIT_SLOT_WIDTH,
     height: OUTFIT_SLOT_HEIGHT,
-    borderRadius: OUTFIT_SLOT_WIDTH / 2,
+    borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(168, 179, 255, 0.45)',
-    backgroundColor: 'rgba(168, 179, 255, 0.12)',
+    borderColor: HAIRLINE,
+    backgroundColor: 'rgba(0, 0, 0, 0.35)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  spoilerFooter: {
+    marginTop: 24,
+    paddingHorizontal: LAYOUT.paddingHorizontal,
+    paddingBottom: 20,
+  },
+  spoilerRule: {
+    height: 1,
+    backgroundColor: 'rgba(192, 209, 255, 0.12)',
+    marginBottom: 20,
+  },
+  logoTeaser: {
+    alignItems: 'center',
+    paddingVertical: 8,
+  },
+  logoText: {
+    fontSize: 19,
+    fontFamily: 'Caladea-Regular',
+    color: '#D4DFF9',
+    letterSpacing: -0.2,
+    opacity: 0.88,
+    marginBottom: 5,
+  },
+  logoTagline: {
+    fontSize: 12,
+    fontFamily: 'Default',
+    color: '#9CA3AF',
+    letterSpacing: 0.2,
+    opacity: 0.75,
   },
 });
