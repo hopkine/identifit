@@ -7,12 +7,18 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Alert,
-  ActionSheetIOS,
   Platform,
+  useWindowDimensions,
   type ImageSourcePropType,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Plus, Calendar, ChevronRight } from 'lucide-react-native';
+import { Plus, Calendar, ChevronRight, Bookmark } from 'lucide-react-native';
+import HomeWeatherWidget from '@/components/HomeWeatherWidget';
+import HomeActionCards, { type HomeActionCard } from '@/components/HomeActionCards';
+import HomeStatsWidgets from '@/components/HomeStatsWidgets';
+import { useWeather } from '@/hooks/useWeather';
 import {
   useFonts,
   Caladea_400Regular,
@@ -22,17 +28,12 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { router } from 'expo-router';
 import { useOOTD } from '@/hooks/useOOTD';
-import { calculateOOTDStreak } from '@/utils/ootdStreak';
 import { formatLocalDateKey } from '@/utils/localDateKey';
-import { currentUser } from '@/data/ootd';
 import type { OOTD } from '@/types/ootd';
 import { LAYOUT, constrainedWidth } from '@/constants/layout';
 import OutfitWeekSlotCutout from '@/components/OutfitWeekSlotCutout';
-import StreakIcon from '@/components/StreakIcon';
-import StarIcon from '@/components/StarIcon';
 import ClosetIcon from '@/components/ClosetIcon';
 import Sparkle from '@/components/Sparkle';
-import OotdCameraCapture from '@/components/OotdCameraCapture';
 
 /** Outfit-of-the-week strip — matches design reference proportions (~1 : 3.7) */
 const OUTFIT_SLOT_WIDTH = 56;
@@ -40,10 +41,6 @@ const OUTFIT_SLOT_HEIGHT = 208;
 const OUTFIT_DAY_GAP = 10;
 /** Dot + date + weekday stack above each slot (aligns chevron with slot column) */
 const OUTFIT_LABEL_STACK_HEIGHT = 64;
-
-/** Corner decoration on legacy stat cards (top styles + closet) */
-const STAT_CARD_DECOR_ICON_WIDTH = 46;
-const STAT_CARD_DECOR_ICON_HEIGHT = 70;
 
 /** iOS dark grouped secondary surface */
 const GROUPED_CARD_BG = '#1C1C1E';
@@ -54,6 +51,13 @@ function ootdSlotImageSource(ootd: OOTD | undefined): ImageSourcePropType {
   const raw = ootd?.cutoutImageUri ?? ootd?.imageUri;
   if (raw == null) return { uri: '' };
   return typeof raw === 'string' ? { uri: raw } : raw;
+}
+
+function timeGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good Morning';
+  if (hour < 17) return 'Good Afternoon';
+  return 'Good Evening';
 }
 
 function formatOutfitWeekRange(
@@ -74,10 +78,27 @@ function formatOutfitWeekRange(
 }
 
 export default function HomeScreen() {
-  const { saveOOTD, getOOTDForDate, userOOTDs, deleteOOTD, getTopStyles } =
-    useOOTD();
-  const [ootdCameraOpen, setOotdCameraOpen] = React.useState(false);
+  const {
+    saveOOTD,
+    getOOTDForDate,
+    userOOTDs,
+    deleteOOTD,
+    currentUserForDisplay,
+    getTopStyles,
+  } = useOOTD();
   const calendarScrollRef = React.useRef<ScrollView>(null);
+  const topPagerRef = React.useRef<ScrollView>(null);
+  const { width: windowWidth } = useWindowDimensions();
+  const [topPageIndex, setTopPageIndex] = React.useState(0);
+  const {
+    status: weatherStatus,
+    visibleHours,
+    selectedIndex: selectedWeatherIndex,
+    selectHour,
+    refresh: refreshWeather,
+  } = useWeather();
+
+  const firstName = currentUserForDisplay.name.split(' ')[0];
 
   const [fontsLoaded] = useFonts({
     'Caladea-Regular': Caladea_400Regular,
@@ -100,12 +121,14 @@ export default function HomeScreen() {
       'Add your outfit of the day to your collection',
       [
         {
-          text: 'Photo Library',
-          onPress: pickImageFromLibrary,
+          text: 'Take Photo',
+          onPress: () => {
+            void takePhotoFromCamera();
+          },
         },
         {
-          text: 'Take Photo',
-          onPress: openCamera,
+          text: 'Photo Library',
+          onPress: pickImageFromLibrary,
         },
         {
           text: 'Cancel',
@@ -138,77 +161,52 @@ export default function HomeScreen() {
     }
   };
 
-  const openCamera = () => {
-    setOotdCameraOpen(true);
+  const takePhotoFromCamera = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        'Camera',
+        'Allow camera access to take photos of your outfits.'
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: false,
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets[0]?.uri) {
+      saveOOTD(result.assets[0].uri, {
+        occasion: 'casual',
+        weather: 'sunny',
+        isPrivate: false,
+      });
+      Alert.alert('Success', 'Your OOTD has been captured and shared!');
+    }
   };
 
   const handleLongPressOOTD = (day: any) => {
     if (!day.hasOutfit || !day.ootd) return;
 
-    // Trigger haptic feedback on long press
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
 
-    if (Platform.OS === 'ios') {
-      ActionSheetIOS.showActionSheetWithOptions(
+    Alert.alert(
+      'Delete OOTD',
+      `Delete your outfit from ${day.day}, ${day.date}? This can't be undone.`,
+      [
+        { text: 'Cancel', style: 'cancel' },
         {
-          options: ['Cancel', 'Delete Photo'],
-          destructiveButtonIndex: 1,
-          cancelButtonIndex: 0,
-          title: 'Manage OOTD',
-          message: `What would you like to do with your outfit from ${day.day}, ${day.date}?`,
-        },
-        (buttonIndex) => {
-          if (buttonIndex === 1) {
-            // Delete option selected
-            Alert.alert(
-              'Delete OOTD',
-              'Are you sure you want to delete this outfit? This action cannot be undone.',
-              [
-                { text: 'Cancel', style: 'cancel' },
-                {
-                  text: 'Delete',
-                  style: 'destructive',
-                  onPress: () => {
-                    deleteOOTD(day.ootd.id);
-                  },
-                },
-              ]
-            );
-          }
-        }
-      );
-    } else {
-      // Android fallback
-      Alert.alert(
-        'Manage OOTD',
-        `What would you like to do with your outfit from ${day.day}, ${day.date}?`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Delete Photo',
-            style: 'destructive',
-            onPress: () => {
-              Alert.alert(
-                'Delete OOTD',
-                'Are you sure you want to delete this outfit? This action cannot be undone.',
-                [
-                  { text: 'Cancel', style: 'cancel' },
-                  {
-                    text: 'Delete',
-                    style: 'destructive',
-                    onPress: () => {
-                      deleteOOTD(day.ootd.id);
-                    },
-                  },
-                ]
-              );
-            },
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deleteOOTD(day.ootd.id);
           },
-        ]
-      );
-    }
+        },
+      ]
+    );
   };
 
   if (!fontsLoaded) {
@@ -242,101 +240,50 @@ export default function HomeScreen() {
   };
 
   const outfitDays = generateOutfitDays();
-
-  const currentStreak = calculateOOTDStreak(userOOTDs);
-
-  // Calculate items worn this month
-  const calculateItemsWornThisMonth = () => {
-    const currentDate = new Date();
-    const currentMonth = currentDate.getMonth();
-    const currentYear = currentDate.getFullYear();
-
-    return userOOTDs.filter((ootd) => {
-      const ootdDate = new Date(ootd.date);
-      return (
-        ootdDate.getMonth() === currentMonth &&
-        ootdDate.getFullYear() === currentYear
-      );
-    }).length;
-  };
-
-  const itemsWornThisMonth = calculateItemsWornThisMonth();
-  const CLOSET_SIZE_ESTIMATE = 30; // placeholder for "closet size" until we have real data
-  const closetWornPercent = Math.min(
-    100,
-    Math.round((itemsWornThisMonth / CLOSET_SIZE_ESTIMATE) * 100)
-  );
-
   const topStyles = getTopStyles(3);
 
-  const streakCardBody = (
-    <>
-      <View style={styles.streakCardDecoration} pointerEvents="none">
-        <StreakIcon
-          width={STAT_CARD_DECOR_ICON_WIDTH}
-          height={STAT_CARD_DECOR_ICON_HEIGHT}
-        />
-      </View>
-      <View style={styles.streakCardContent}>
-        <Text style={styles.streakStatNumber}>{currentStreak}</Text>
-        <Text style={styles.streakFootnote}>
-          {currentStreak === 0
-            ? 'Log an OOTD to start a streak.'
-            : currentStreak === 1
-              ? 'day in a row'
-              : 'days in a row'}
-        </Text>
-      </View>
-    </>
-  );
+  const contentWidth = Math.min(LAYOUT.contentMaxWidth, windowWidth);
+  const topPageWidth = contentWidth - LAYOUT.paddingHorizontal * 2;
 
-  const topStylesCardBody = (
-    <>
-      <View style={styles.topStylesCardDecoration} pointerEvents="none">
-        <StarIcon
-          width={STAT_CARD_DECOR_ICON_WIDTH}
-          height={STAT_CARD_DECOR_ICON_HEIGHT}
-        />
-      </View>
-      <View style={styles.topStylesTextBlock}>
-        <Text style={styles.statTitle}>My Top Styles</Text>
-        {topStyles.length > 0 ? (
-          topStyles.map((style, index) => (
-            <Text key={style} style={styles.styleItem}>
-              {index + 1}. {style}
-            </Text>
-          ))
-        ) : (
-          <Text style={styles.styleItem}>No styles yet</Text>
-        )}
-      </View>
-    </>
-  );
+  const handleTopPagerScrollEnd = (
+    event: NativeSyntheticEvent<NativeScrollEvent>
+  ) => {
+    const nextIndex = Math.round(
+      event.nativeEvent.contentOffset.x / Math.max(topPageWidth, 1)
+    );
+    setTopPageIndex(Math.min(Math.max(nextIndex, 0), 1));
+  };
 
-  const progressCardBody = (
-    <>
-      <View style={styles.progressCardDecoration} pointerEvents="none">
-        <ClosetIcon
-          width={STAT_CARD_DECOR_ICON_WIDTH}
-          height={STAT_CARD_DECOR_ICON_HEIGHT}
-        />
-      </View>
-      <View style={styles.progressCardInner}>
-        <Text style={styles.progressNumber}>{closetWornPercent}%</Text>
-        <Text style={styles.progressLabel}>
-          of your{'\n'}closet worn{'\n'}this month
-        </Text>
-      </View>
-    </>
-  );
+  const actionCards: HomeActionCard[] = [
+    {
+      id: 'manual',
+      label: 'Select\nManually',
+      icon: <ClosetIcon width={34} height={40} />,
+      onPress: handleAddOutfit,
+    },
+    {
+      id: 'saved',
+      label: 'Choose from\nSaved',
+      icon: <Bookmark size={34} color="#A8C6FF" strokeWidth={1.75} />,
+      onPress: () => router.push('/NAV/saved'),
+    },
+    {
+      id: 'rec',
+      label: 'Get Outfit\nrec',
+      icon: <Sparkle width={28} height={40} color="#A8C6FF" />,
+      onPress: () =>
+        router.push({
+          pathname: '/style-overlay',
+          params: { imageSet: 'forYou', imageIndex: '0' },
+        }),
+    },
+  ];
 
   const outfitWeekSectionInner = (
     <>
       <View style={styles.sectionHeader}>
         <View>
-          <Text style={styles.sectionTitle}>
-            Outfit of the Week
-          </Text>
+          <Text style={styles.sectionTitle}>Outfit of the Week</Text>
           <Text style={styles.sectionDate}>
             {formatOutfitWeekRange(outfitDays)}
           </Text>
@@ -346,7 +293,7 @@ export default function HomeScreen() {
           onPress={() => router.push('/memories')}
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           accessibilityRole="button"
-          accessibilityLabel="Open memories calendar"
+          accessibilityLabel="Open calendar"
         >
           <Calendar size={18} color={LAYOUT.accentPurple} />
         </TouchableOpacity>
@@ -422,7 +369,6 @@ export default function HomeScreen() {
   );
 
   return (
-    <>
     <SafeAreaView style={styles.container}>
       <StatusBar style="light" />
       <View style={styles.innerWrapper}>
@@ -434,49 +380,73 @@ export default function HomeScreen() {
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.greetingKicker}>Good morning</Text>
-          <Text style={styles.greetingDisplayName}>
-            {currentUser.name.split(' ')[0]}
-          </Text>
+          <Text style={styles.greetingKicker}>{timeGreeting()}</Text>
+          <Text style={styles.greetingDisplayName}>{firstName}</Text>
         </View>
 
-        <View style={styles.statsContainer}>
-          <View style={styles.statsRow}>
-            <View style={styles.dayStreakCardFlat}>{streakCardBody}</View>
-            <View style={styles.topStylesCardFlat}>{topStylesCardBody}</View>
+        <View style={styles.topPagerSection}>
+          <ScrollView
+            ref={topPagerRef}
+            horizontal
+            pagingEnabled
+            nestedScrollEnabled
+            showsHorizontalScrollIndicator={false}
+            decelerationRate="fast"
+            onMomentumScrollEnd={handleTopPagerScrollEnd}
+            onScrollEndDrag={handleTopPagerScrollEnd}
+            style={{ width: topPageWidth }}
+            contentContainerStyle={styles.topPagerContent}
+          >
+            <View style={[styles.topPage, { width: topPageWidth }]}>
+              <HomeWeatherWidget
+                status={weatherStatus}
+                hours={visibleHours}
+                selectedIndex={selectedWeatherIndex}
+                onSelectHour={selectHour}
+                onRetry={refreshWeather}
+              />
+              <View style={styles.actionCardsInPager}>
+                <HomeActionCards cards={actionCards} />
+              </View>
+            </View>
+
+            <View style={[styles.topPage, { width: topPageWidth }]}>
+              <HomeStatsWidgets userOOTDs={userOOTDs} topStyles={topStyles} />
+            </View>
+          </ScrollView>
+
+          <View style={styles.topPagerDots}>
+            {(['Weather', 'Stats'] as const).map((label, index) => (
+              <TouchableOpacity
+                key={label}
+                onPress={() => {
+                  topPagerRef.current?.scrollTo({
+                    x: topPageWidth * index,
+                    animated: true,
+                  });
+                  setTopPageIndex(index);
+                }}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={`${label} page`}
+              >
+                <View
+                  style={[
+                    styles.topPagerDot,
+                    index === topPageIndex && styles.topPagerDotActive,
+                  ]}
+                />
+              </TouchableOpacity>
+            ))}
           </View>
-          <View style={styles.progressCardFlat}>{progressCardBody}</View>
         </View>
 
         <View style={[styles.groupedCard, styles.outfitSectionOuter]}>
           <View style={styles.outfitSectionInner}>{outfitWeekSectionInner}</View>
         </View>
-
-        {/* Bottom spoiler — scroll to reveal */}
-        <View style={styles.spoilerFooter}>
-          <View style={styles.spoilerRule} />
-          <View style={styles.logoTeaser}>
-            <Sparkle width={50} height={50} />
-            <Text style={styles.logoText}>identifit</Text>
-            <Text style={styles.logoTagline}>Your style, identified</Text>
-          </View>
-        </View>
       </ScrollView>
       </View>
     </SafeAreaView>
-    <OotdCameraCapture
-      open={ootdCameraOpen}
-      onClose={() => setOotdCameraOpen(false)}
-      onPhotoCaptured={(uri) => {
-        saveOOTD(uri, {
-          occasion: 'casual',
-          weather: 'sunny',
-          isPrivate: false,
-        });
-        Alert.alert('Success', 'Your OOTD has been captured and shared!');
-      }}
-    />
-  </>
   );
 }
 
@@ -520,131 +490,42 @@ const styles = StyleSheet.create({
     lineHeight: 40,
     marginBottom: 14,
   },
-  statsContainer: {
-    marginBottom: 16,
+  topPagerSection: {
+    marginBottom: 18,
     paddingHorizontal: LAYOUT.paddingHorizontal,
+    alignItems: 'center',
   },
-  statsRow: {
+  topPagerContent: {
+    alignItems: 'flex-start',
+  },
+  topPage: {
+    minHeight: 280,
+  },
+  actionCardsInPager: {
+    marginTop: 16,
+  },
+  topPagerDots: {
     flexDirection: 'row',
-    gap: 10,
-    marginBottom: 10,
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 14,
+  },
+  topPagerDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.22)',
+  },
+  topPagerDotActive: {
+    backgroundColor: '#A8B3FF',
   },
   groupedCard: {
     backgroundColor: GROUPED_CARD_BG,
     borderRadius: 12,
-    paddingVertical: 14,
+    paddingVertical: 16,
     paddingHorizontal: 14,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: HAIRLINE,
-  },
-  dayStreakCardFlat: {
-    flex: 1,
-    backgroundColor: 'rgba(63, 63, 63, 0.25)',
-    borderRadius: 10,
-    padding: 18,
-    position: 'relative',
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(244, 173, 179, 0.25)',
-  },
-  streakCardDecoration: {
-    position: 'absolute',
-    right: -6,
-    bottom: -8,
-    justifyContent: 'flex-end',
-    alignItems: 'flex-end',
-    zIndex: 0,
-  },
-  streakCardContent: {
-    zIndex: 1,
-  },
-  streakStatNumber: {
-    fontSize: 27,
-    color: '#E5ADFE',
-    fontFamily: 'Caladea-Bold',
-  },
-  streakFootnote: {
-    marginTop: 4,
-    fontSize: 12,
-    fontFamily: 'Default',
-    color: '#A8B0BD',
-    lineHeight: 18,
-    letterSpacing: 0.2,
-  },
-  topStylesCardFlat: {
-    flex: 1,
-    backgroundColor: 'rgba(63, 63, 63, 0.25)',
-    borderRadius: 10,
-    padding: 18,
-    position: 'relative',
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(235, 252, 183, 0.25)',
-  },
-  topStylesCardDecoration: {
-    position: 'absolute',
-    right: -1,
-    bottom: -12,
-    justifyContent: 'flex-end',
-    alignItems: 'flex-end',
-    zIndex: 0,
-  },
-  topStylesTextBlock: {
-    zIndex: 1,
-  },
-  statTitle: {
-    fontSize: 21,
-    color: '#EBFCB7',
-    fontFamily: 'Caladea-Bold',
-    fontWeight: 'bold',
-    letterSpacing: -0.3,
-    lineHeight: 26,
-    marginBottom: 2,
-  },
-  styleItem: {
-    fontSize: 12,
-    fontFamily: 'Default',
-    color: '#A8B0BD',
-    lineHeight: 17,
-    letterSpacing: 0.15,
-  },
-  progressCardFlat: {
-    backgroundColor: 'rgba(63, 63, 63, 0.25)',
-    borderRadius: 10,
-    padding: 18,
-    position: 'relative',
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(168, 198, 255, 0.25)',
-  },
-  progressCardDecoration: {
-    position: 'absolute',
-    right: -6,
-    bottom: -8,
-    justifyContent: 'flex-end',
-    alignItems: 'flex-end',
-    zIndex: 0,
-  },
-  progressCardInner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    zIndex: 1,
-    width: '100%',
-  },
-  progressNumber: {
-    fontSize: 27,
-    fontWeight: '700',
-    fontFamily: 'Caladea-Bold',
-    color: '#A8C6FF',
-    marginRight: 15,
-  },
-  progressLabel: {
-    fontSize: 12,
-    fontFamily: 'Default',
-    color: '#A8B0BD',
-    lineHeight: 18,
-    letterSpacing: 0.15,
-    flex: 1,
   },
   outfitSectionOuter: {
     marginHorizontal: LAYOUT.paddingHorizontal,
@@ -759,46 +640,11 @@ const styles = StyleSheet.create({
   outfitWeekAddFrame: {
     width: OUTFIT_SLOT_WIDTH,
     height: OUTFIT_SLOT_HEIGHT,
-    borderRadius: 10,
+    borderRadius: OUTFIT_SLOT_WIDTH / 2,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: HAIRLINE,
-    backgroundColor: 'rgba(0, 0, 0, 0.35)',
+    borderColor: 'rgba(168, 179, 255, 0.45)',
+    backgroundColor: 'rgba(168, 179, 255, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  spoilerFooter: {
-    marginTop: 24,
-    paddingHorizontal: LAYOUT.paddingHorizontal,
-    paddingBottom: 20,
-  },
-  spoilerRule: {
-    height: 1,
-    backgroundColor: 'rgba(192, 209, 255, 0.12)',
-    marginBottom: 20,
-  },
-  logoTeaser: {
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  logoImage: {
-    width: 50,
-    height: 50,
-    marginBottom: 12,
-    opacity: 0.6,
-  },
-  logoText: {
-    fontSize: 19,
-    fontFamily: 'Caladea-Regular',
-    color: '#D4DFF9',
-    letterSpacing: -0.2,
-    opacity: 0.88,
-    marginBottom: 5,
-  },
-  logoTagline: {
-    fontSize: 12,
-    fontFamily: 'Default',
-    color: '#9CA3AF',
-    letterSpacing: 0.2,
-    opacity: 0.75,
   },
 });

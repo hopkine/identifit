@@ -5,8 +5,12 @@ import type { ImageSourcePropType } from 'react-native';
 
 const DEFAULT_W = 56;
 const DEFAULT_H = 208;
-/** Sharp rectangle slot (no pill / silhouette). */
-const SLOT_RX = 0;
+/**
+ * Corner radius matches `outfitWeekAddFrame` in app/NAV/home.tsx so filled slots
+ * share the same silhouette as the empty “+” column.
+ */
+const SLOT_RX = 10;
+const SLOT_STROKE = 'rgba(255, 255, 255, 0.22)';
 
 function sourceToSvgHref(source: ImageSourcePropType): string | number | null {
   if (typeof source === 'number') return source;
@@ -32,7 +36,11 @@ export default function OutfitWeekSlotCutout({
   const href = sourceToSvgHref(source);
 
   if (href == null) {
-    return <View style={[styles.fallback, { width, height }]} />;
+    return (
+      <View
+        style={[styles.fallback, { width, height, borderRadius: SLOT_RX }]}
+      />
+    );
   }
 
   return (
@@ -59,15 +67,15 @@ export default function OutfitWeekSlotCutout({
           mask={`url(#${maskId})`}
         />
         <Rect
-          x={1}
-          y={1}
-          width={DEFAULT_W - 2}
-          height={DEFAULT_H - 2}
+          x={0.5}
+          y={0.5}
+          width={DEFAULT_W - 1}
+          height={DEFAULT_H - 1}
           rx={SLOT_RX}
           ry={SLOT_RX}
           fill="none"
-          stroke="rgba(255, 255, 255, 0.92)"
-          strokeWidth={2}
+          stroke={SLOT_STROKE}
+          strokeWidth={1}
         />
       </Svg>
     </View>
@@ -80,5 +88,6 @@ const styles = StyleSheet.create({
   },
   fallback: {
     backgroundColor: 'rgba(40, 40, 40, 0.6)',
+    overflow: 'hidden',
   },
 });

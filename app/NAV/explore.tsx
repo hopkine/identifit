@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useRouter } from 'expo-router';
 import {
   View,
   Text,
@@ -8,6 +9,7 @@ import {
   ScrollView,
   Image,
   Platform,
+  type ImageSourcePropType,
 } from 'react-native';
 import {
   SlidersHorizontal,
@@ -19,71 +21,53 @@ import {
   MessageCircle,
   Smile,
   MessageSquare,
+  User as UserIcon,
 } from 'lucide-react-native';
 import FilterSortSheet, { type FilterState } from '@/components/FilterSortSheet';
 import { LAYOUT } from '@/constants/layout';
 import { useOOTD } from '@/hooks/useOOTD';
+import { resolveUserAvatarSource } from '@/utils/userAvatar';
+import type { OOTD, User } from '@/types/ootd';
 import { SymbolView } from 'expo-symbols';
-import { currentUser } from '@/data/ootd';
 
 const FEED_EDGE_INSET = 10;
 const PHOTO_CORNER_RADIUS = 22;
-
-type FeedComment = {
-  id: string;
-  author: string;
-  text: string;
-};
 
 type FeedItem = {
   id: string;
   imageSource: any;
   likeTargetId?: string;
+  /** Display name (profile / settings) */
+  displayName: string;
+  /** Handle without @ */
   username: string;
+  avatarSource: ImageSourcePropType | null;
   timestamp: string;
-  caption: string;
-  comments: FeedComment[];
 };
 
-const captionPool = [
-  'today fit check',
-  'keeping it comfy but put together',
-  'late afternoon campus fit',
-  'trying this silhouette for spring',
-];
-const forYouFits = [
-  require('@/assets/images/recs/rec-white-halter-top-black-pants.png'),
-  require('@/assets/images/recs/rec-striped-offshoulder-white-pants.png'),
-  require('@/assets/images/recs/rec-mesh-tank-denim-shorts-cap.png'),
-  require('@/assets/images/recs/rec-white-graphic-tee-black-wide-pants.png'),
-  require('@/assets/images/recs/rec-black-tank-ruffle-hem-jeans.png'),
-  require('@/assets/images/recs/rec-white-bucket-hat-black-skirt.png'),
-  require('@/assets/images/recs/rec-cropped-knit-wide-jeans.png'),
-];
+function shortTimeAgo(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return '';
+  const hours = Math.floor((Date.now() - then) / 3600000);
+  if (hours < 1) return 'just now';
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `${days}d ago`;
+}
 
-const commentPool: FeedComment[][] = [
-  [
-    { id: 'c1', author: 'vincentiskool', text: 'this unit gives me nostalgia' },
-    { id: 'c2', author: 'michaelk', text: 'fit is so clean' },
-    { id: 'c3', author: 'lyla', text: 'where is the jacket from?' },
-  ],
-  [
-    { id: 'c4', author: 'han', text: 'obsessed with this combo' },
-    { id: 'c5', author: 'noah', text: 'need these pants asap' },
-  ],
-  [
-    { id: 'c6', author: 'erika', text: 'the colors are perfect together' },
-    { id: 'c7', author: 'maya_style', text: 'you always eat' },
-  ],
-  [
-    { id: 'c8', author: 'alex_minimal', text: 'clean lines as always' },
-    { id: 'c9', author: 'sam_vintage', text: 'ok this one is my fav' },
-    { id: 'c10', author: 'zoe_street', text: 'drop the full fit details pls' },
-  ],
-];
+function posterForOotd(ootd: OOTD, self: User): User {
+  if (ootd.userId === self.id) return self;
+  return {
+    id: ootd.userId,
+    name: 'User',
+    username: 'user',
+    isOnline: false,
+  };
+}
 
 export default function ExploreScreen() {
-  const { getAllFriendsOOTDs } = useOOTD();
+  const router = useRouter();
+  const { getAllFriendsOOTDs, currentUserForDisplay } = useOOTD();
   const [activeTab, setActiveTab] = useState<'friends' | 'forYou'>('friends');
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [appliedShowNearMe, setAppliedShowNearMe] = useState(false);
@@ -94,32 +78,29 @@ export default function ExploreScreen() {
 
   const feedItems = useMemo<FeedItem[]>(() => {
     if (activeTab === 'forYou') {
-      const source = appliedShowNearMe
-        ? forYouFits.slice(0, Math.min(2, forYouFits.length))
-        : forYouFits;
-      return source.map((imageSource, index) => ({
-        id: `foryou-${index}`,
-        imageSource,
-        username: currentUser.username,
-        timestamp: '18h ago',
-        caption: captionPool[index % captionPool.length],
-        comments: commentPool[index % commentPool.length],
-      }));
+      return [];
     }
 
     const all = getAllFriendsOOTDs();
-    const source = appliedShowNearMe ? all.slice(0, Math.min(2, all.length)) : all;
-    return source.map((ootd, index) => ({
-      id: ootd.id,
-      imageSource:
-        typeof ootd.imageUri === 'string' ? { uri: ootd.imageUri } : ootd.imageUri,
-      likeTargetId: ootd.id,
-      username: currentUser.username,
-      timestamp: '18h ago',
-      caption: captionPool[index % captionPool.length],
-      comments: commentPool[index % commentPool.length],
-    }));
-  }, [activeTab, appliedShowNearMe, getAllFriendsOOTDs]);
+    const afterNearMe = appliedShowNearMe
+      ? all.slice(0, Math.min(2, all.length))
+      : all;
+    return afterNearMe.map((ootd) => {
+      const poster = posterForOotd(ootd, currentUserForDisplay);
+      return {
+        id: ootd.id,
+        imageSource:
+          typeof ootd.imageUri === 'string'
+            ? { uri: ootd.imageUri }
+            : ootd.imageUri,
+        likeTargetId: ootd.id,
+        displayName: poster.name,
+        username: poster.username,
+        avatarSource: resolveUserAvatarSource(poster),
+        timestamp: shortTimeAgo(ootd.createdAt),
+      };
+    });
+  }, [activeTab, appliedShowNearMe, getAllFriendsOOTDs, currentUserForDisplay]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -221,13 +202,35 @@ export default function ExploreScreen() {
           </View>
 
           <View style={styles.feedContainer}>
+            {feedItems.length === 0 && (
+              <View style={styles.emptyFeed}>
+                <Text style={styles.emptyFeedTitle}>No posts yet</Text>
+                <Text style={styles.emptyFeedSubtitle}>
+                  {activeTab === 'forYou'
+                    ? 'Recommendations will show here once we connect your style sources.'
+                    : 'Share an outfit from Home or check back when friends post.'}
+                </Text>
+              </View>
+            )}
             {feedItems.map((item, index) => (
               <View key={`${activeTab}-${item.id}-${index}`} style={styles.feedCard}>
                 <View style={styles.feedHeaderRow}>
-                  <View style={styles.avatarBlank} />
+                  {item.avatarSource ? (
+                    <Image
+                      source={item.avatarSource}
+                      style={styles.avatarImage}
+                      accessibilityIgnoresInvertColors
+                    />
+                  ) : (
+                    <View style={styles.avatarPlaceholder}>
+                      <UserIcon size={18} color="#AEAEB2" strokeWidth={1.75} />
+                    </View>
+                  )}
                   <View style={styles.feedHeaderText}>
-                    <Text style={styles.usernameText}>{item.username}</Text>
-                    <Text style={styles.metaText}>{item.timestamp}</Text>
+                    <Text style={styles.displayNameText}>{item.displayName}</Text>
+                    <Text style={styles.metaText}>
+                      @{item.username} · {item.timestamp}
+                    </Text>
                   </View>
                   <TouchableOpacity
                     style={styles.moreButton}
@@ -244,33 +247,86 @@ export default function ExploreScreen() {
                 </View>
 
                 <View style={styles.photoShell}>
-                  <Image source={item.imageSource} style={styles.feedImage} resizeMode="cover" />
-                  <View style={styles.photoOverlayActions} pointerEvents="box-none">
+                  {activeTab === 'friends' && item.likeTargetId ? (
                     <TouchableOpacity
-                      style={styles.photoOverlayIconHit}
-                      activeOpacity={0.75}
+                      activeOpacity={0.92}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/style-overlay',
+                          params: { ootdId: item.likeTargetId },
+                        })
+                      }
                       accessibilityRole="button"
-                      accessibilityLabel="Send"
+                      accessibilityLabel="View post and recreate outfit"
+                      style={styles.photoShellTouchable}
                     >
-                      <Send size={22} color="#FFFFFF" strokeWidth={2} />
+                      <Image
+                        source={item.imageSource}
+                        style={styles.feedImage}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.photoOverlayActions} pointerEvents="box-none">
+                        <TouchableOpacity
+                          style={styles.photoOverlayIconHit}
+                          activeOpacity={0.75}
+                          accessibilityRole="button"
+                          accessibilityLabel="Send"
+                        >
+                          <Send size={22} color="#FFFFFF" strokeWidth={2} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.photoOverlayIconHit}
+                          activeOpacity={0.75}
+                          accessibilityRole="button"
+                          accessibilityLabel="Comments"
+                        >
+                          <MessageCircle size={22} color="#FFFFFF" strokeWidth={2} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.photoOverlayIconHit}
+                          activeOpacity={0.75}
+                          accessibilityRole="button"
+                          accessibilityLabel="React"
+                        >
+                          <Smile size={22} color="#FFFFFF" strokeWidth={2} />
+                        </TouchableOpacity>
+                      </View>
                     </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.photoOverlayIconHit}
-                      activeOpacity={0.75}
-                      accessibilityRole="button"
-                      accessibilityLabel="Comments"
-                    >
-                      <MessageCircle size={22} color="#FFFFFF" strokeWidth={2} />
-                    </TouchableOpacity>
-                    <TouchableOpacity
-                      style={styles.photoOverlayIconHit}
-                      activeOpacity={0.75}
-                      accessibilityRole="button"
-                      accessibilityLabel="React"
-                    >
-                      <Smile size={22} color="#FFFFFF" strokeWidth={2} />
-                    </TouchableOpacity>
-                  </View>
+                  ) : (
+                    <>
+                      <Image
+                        source={item.imageSource}
+                        style={styles.feedImage}
+                        resizeMode="cover"
+                      />
+                      <View style={styles.photoOverlayActions} pointerEvents="box-none">
+                        <TouchableOpacity
+                          style={styles.photoOverlayIconHit}
+                          activeOpacity={0.75}
+                          accessibilityRole="button"
+                          accessibilityLabel="Send"
+                        >
+                          <Send size={22} color="#FFFFFF" strokeWidth={2} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.photoOverlayIconHit}
+                          activeOpacity={0.75}
+                          accessibilityRole="button"
+                          accessibilityLabel="Comments"
+                        >
+                          <MessageCircle size={22} color="#FFFFFF" strokeWidth={2} />
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                          style={styles.photoOverlayIconHit}
+                          activeOpacity={0.75}
+                          accessibilityRole="button"
+                          accessibilityLabel="React"
+                        >
+                          <Smile size={22} color="#FFFFFF" strokeWidth={2} />
+                        </TouchableOpacity>
+                      </View>
+                    </>
+                  )}
                 </View>
 
                 <TouchableOpacity
@@ -382,6 +438,27 @@ const styles = StyleSheet.create({
     paddingBottom: 120,
     gap: 28,
   },
+  emptyFeed: {
+    paddingHorizontal: FEED_EDGE_INSET + 8,
+    paddingVertical: 48,
+    alignItems: 'center',
+  },
+  emptyFeedTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontFamily: 'System',
+    fontWeight: '600',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyFeedSubtitle: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 14,
+    fontFamily: 'System',
+    textAlign: 'center',
+    lineHeight: 20,
+    maxWidth: 320,
+  },
   feedCard: {
     backgroundColor: 'transparent',
   },
@@ -392,13 +469,22 @@ const styles = StyleSheet.create({
     paddingRight: FEED_EDGE_INSET,
     paddingBottom: 12,
   },
-  avatarBlank: {
+  avatarImage: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+  },
+  avatarPlaceholder: {
     width: 36,
     height: 36,
     borderRadius: 18,
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255, 255, 255, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
   feedHeaderText: {
     flex: 1,
@@ -407,7 +493,7 @@ const styles = StyleSheet.create({
     paddingRight: 8,
     justifyContent: 'center',
   },
-  usernameText: {
+  displayNameText: {
     color: '#FFFFFF',
     fontSize: 15,
     fontFamily: 'System',
@@ -427,6 +513,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 17,
+  },
+  photoShellTouchable: {
+    width: '100%',
   },
   photoShell: {
     marginHorizontal: FEED_EDGE_INSET,

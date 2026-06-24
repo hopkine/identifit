@@ -1,10 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   SafeAreaView,
   TouchableOpacity,
+  Pressable,
+  TextInput,
   Image,
   ScrollView,
   useWindowDimensions,
@@ -21,7 +23,6 @@ import {
 } from 'lucide-react-native';
 import { useFonts, Caladea_400Regular } from '@expo-google-fonts/caladea';
 import { useOOTD } from '@/hooks/useOOTD';
-import { currentUser } from '@/data/ootd';
 import { calculateOOTDStreak } from '@/utils/ootdStreak';
 import { resolveUserAvatarSource } from '@/utils/userAvatar';
 import FlameIcon from '@/components/FlameIcon';
@@ -30,7 +31,6 @@ import type { OOTD } from '@/types/ootd';
 import * as Haptics from 'expo-haptics';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
-import OotdCameraCapture from '@/components/OotdCameraCapture';
 import DashedLavenderFrame from '@/components/DashedLavenderFrame';
 
 /** Match explore header horizontal inset */
@@ -139,12 +139,135 @@ function ProfileAddPinTile({
 }
 
 export default function ProfileScreen() {
-  const [ootdCameraOpen, setOotdCameraOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'posts' | 'saved'>('posts');
-  const { userOOTDs, saveOOTD } = useOOTD();
+  const {
+    userOOTDs,
+    saveOOTD,
+    currentUserForDisplay,
+    setProfileAvatar,
+    setProfileDisplayName,
+  } = useOOTD();
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(currentUserForDisplay.name);
+
+  useEffect(() => {
+    if (!editingName) {
+      setNameDraft(currentUserForDisplay.name);
+    }
+  }, [currentUserForDisplay.name, editingName]);
+
+  const beginEditName = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    setNameDraft(currentUserForDisplay.name);
+    setEditingName(true);
+  };
+
+  const finishEditName = async () => {
+    const t = nameDraft.trim();
+    if (!t) {
+      setNameDraft(currentUserForDisplay.name);
+      setEditingName(false);
+      return;
+    }
+    await setProfileDisplayName(t);
+    setEditingName(false);
+  };
   const ootdStreak = calculateOOTDStreak(userOOTDs);
   const { width: windowWidth } = useWindowDimensions();
-  const profileAvatarSource = resolveUserAvatarSource(currentUser);
+  const profileAvatarSource = resolveUserAvatarSource(currentUserForDisplay);
+
+  const pickProfileFromLibrary = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        'Photo library',
+        'Allow access to your photos to set a profile picture.'
+      );
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.92,
+    });
+    if (!result.canceled && result.assets[0]?.uri) {
+      await setProfileAvatar(result.assets[0].uri);
+    }
+  };
+
+  const pickProfileFromCamera = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        'Camera',
+        'Allow camera access to take a profile picture.'
+      );
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.92,
+    });
+    if (!result.canceled && result.assets[0]?.uri) {
+      await setProfileAvatar(result.assets[0].uri);
+    }
+  };
+
+  const confirmRemoveProfilePhoto = () => {
+    Alert.alert(
+      'Remove profile photo',
+      'Your profile picture will be removed.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: () => {
+            void setProfileAvatar(null);
+          },
+        },
+      ]
+    );
+  };
+
+  const openProfilePhotoOptions = () => {
+    if (Platform.OS !== 'web') {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
+    const hasPhoto = profileAvatarSource != null;
+    Alert.alert(
+      'Profile photo',
+      'Choose a source',
+      [
+        {
+          text: 'Take Photo',
+          onPress: () => {
+            void pickProfileFromCamera();
+          },
+        },
+        {
+          text: 'Photo Library',
+          onPress: () => {
+            void pickProfileFromLibrary();
+          },
+        },
+        ...(hasPhoto
+          ? [
+              {
+                text: 'Remove Photo',
+                style: 'destructive' as const,
+                onPress: () => confirmRemoveProfilePhoto(),
+              },
+            ]
+          : []),
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
 
   const pickImageFromLibrary = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -162,6 +285,31 @@ export default function ProfileScreen() {
     }
   };
 
+  const takePhotoFromCamera = async () => {
+    const permission = await ImagePicker.requestCameraPermissionsAsync();
+    if (!permission.granted) {
+      Alert.alert(
+        'Camera',
+        'Allow camera access to take photos of your outfits.'
+      );
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: false,
+      quality: 1,
+    });
+
+    if (!result.canceled && result.assets[0]?.uri) {
+      saveOOTD(result.assets[0].uri, {
+        occasion: 'casual',
+        weather: 'sunny',
+        isPrivate: false,
+      });
+      Alert.alert('Success', 'Your OOTD has been captured and shared!');
+    }
+  };
+
   const openCreateOOTD = () => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -171,15 +319,15 @@ export default function ProfileScreen() {
       'Add your outfit of the day to your collection',
       [
         {
-          text: 'Photo Library',
+          text: 'Take Photo',
           onPress: () => {
-            void pickImageFromLibrary();
+            void takePhotoFromCamera();
           },
         },
         {
-          text: 'Take Photo',
+          text: 'Photo Library',
           onPress: () => {
-            setOotdCameraOpen(true);
+            void pickImageFromLibrary();
           },
         },
         {
@@ -210,7 +358,6 @@ export default function ProfileScreen() {
   }
 
   return (
-    <>
     <SafeAreaView style={styles.container}>
       <View style={styles.innerWrapper}>
         <ScrollView
@@ -257,20 +404,53 @@ export default function ProfileScreen() {
           </View>
 
           <View style={styles.profileSection}>
-            <View style={styles.profilePictureContainer}>
+            <TouchableOpacity
+              style={styles.profilePictureContainer}
+              onPress={openProfilePhotoOptions}
+              activeOpacity={0.85}
+              accessibilityRole="button"
+              accessibilityLabel="Change profile photo"
+            >
               {profileAvatarSource ? (
                 <Image
                   source={profileAvatarSource}
                   style={styles.profilePicture}
+                  resizeMode="cover"
+                  accessibilityIgnoresInvertColors
                 />
               ) : (
                 <View style={styles.profileAvatarPlaceholder}>
-                  <User size={30} color="#AEAEB2" strokeWidth={1.75} />
+                  <User size={36} color="#AEAEB2" strokeWidth={1.75} />
                 </View>
               )}
-            </View>
+            </TouchableOpacity>
 
-            <Text style={styles.name}>{currentUser.name}</Text>
+            {editingName ? (
+              <TextInput
+                style={styles.nameInput}
+                value={nameDraft}
+                onChangeText={setNameDraft}
+                onBlur={() => {
+                  void finishEditName();
+                }}
+                onSubmitEditing={() => {
+                  void finishEditName();
+                }}
+                autoFocus
+                selectTextOnFocus
+                returnKeyType="done"
+                blurOnSubmit
+                accessibilityLabel="Display name"
+              />
+            ) : (
+              <Pressable
+                onPress={beginEditName}
+                accessibilityRole="button"
+                accessibilityLabel="Edit display name"
+              >
+                <Text style={styles.name}>{currentUserForDisplay.name}</Text>
+              </Pressable>
+            )}
 
             <View style={styles.statsContainer}>
               <View style={styles.streakInline}>
@@ -278,7 +458,7 @@ export default function ProfileScreen() {
                 <Text style={styles.streakNumber}>{ootdStreak}</Text>
               </View>
               <Text style={styles.statsSep}> · </Text>
-              <Text style={styles.statsPart}>@{currentUser.username}</Text>
+              <Text style={styles.statsPart}>@{currentUserForDisplay.username}</Text>
               <Text style={styles.statsSep}> · </Text>
               <Text style={styles.statsPart}>0 friends</Text>
             </View>
@@ -387,19 +567,6 @@ export default function ProfileScreen() {
         </ScrollView>
       </View>
     </SafeAreaView>
-    <OotdCameraCapture
-      open={ootdCameraOpen}
-      onClose={() => setOotdCameraOpen(false)}
-      onPhotoCaptured={(uri) => {
-        saveOOTD(uri, {
-          occasion: 'casual',
-          weather: 'sunny',
-          isPrivate: false,
-        });
-        Alert.alert('Success', 'Your OOTD has been captured and shared!');
-      }}
-    />
-    </>
   );
 }
 
@@ -463,19 +630,23 @@ const styles = StyleSheet.create({
     borderRadius: 36,
     overflow: 'hidden',
     marginBottom: 8,
-    backgroundColor: '#2C2C2E',
   },
   profilePicture: {
     width: '100%',
     height: '100%',
-    resizeMode: 'cover',
+    borderRadius: 36,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
   },
   profileAvatarPlaceholder: {
     width: '100%',
     height: '100%',
+    borderRadius: 36,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#3A3A3C',
+    overflow: 'hidden',
   },
   name: {
     color: '#ffffff',
@@ -483,6 +654,19 @@ const styles = StyleSheet.create({
     marginBottom: 8,
     fontFamily: 'Caladea-Regular',
     letterSpacing: -0.2,
+  },
+  nameInput: {
+    color: '#ffffff',
+    fontSize: 22,
+    marginBottom: 8,
+    fontFamily: 'Caladea-Regular',
+    letterSpacing: -0.2,
+    textAlign: 'center',
+    minWidth: 200,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: 'rgba(168, 179, 255, 0.55)',
   },
   statsContainer: {
     flexDirection: 'row',

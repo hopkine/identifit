@@ -11,15 +11,14 @@ import {
 } from 'react-native';
 import { Plus, Users, Sparkles } from 'lucide-react-native';
 import { useFonts, Caladea_400Regular, Caladea_700Bold } from '@expo-google-fonts/caladea';
-import { mockFriends } from '@/data/social';
 import { useOOTD } from '@/hooks/useOOTD';
-import { currentUser } from '@/data/ootd';
 import OOTDCard from '@/components/OOTDCard';
 import { LAYOUT, constrainedWidth } from '@/constants/layout';
 
 export default function SocialScreen() {
   const [refreshing, setRefreshing] = useState(false);
-  const { getAllFriendsOOTDs, toggleOOTDLike } = useOOTD();
+  const { getAllFriendsOOTDs, toggleOOTDLike, currentUserForDisplay } =
+    useOOTD();
   const allOOTDs = getAllFriendsOOTDs();
   
   const [fontsLoaded] = useFonts({
@@ -52,25 +51,18 @@ export default function SocialScreen() {
   };
 
   const handleOOTDPress = (ootd: any) => {
-    const user = ootd.userId === currentUser.id ? currentUser : mockFriends.find(f => f.id === ootd.userId);
-    if (user) {
-      Alert.alert(
-        `${user.name}'s OOTD`,
-        `Posted ${formatTimeAgo(ootd.createdAt)} ago\n${ootd.occasion ? `For: ${ootd.occasion}` : ''}\n${ootd.weather ? `Weather: ${ootd.weather}` : ''}`,
-        [{ text: 'Got it!' }]
-      );
+    const user =
+      ootd.userId === currentUserForDisplay.id
+        ? currentUserForDisplay
+        : undefined;
+    if (!user) {
+      return;
     }
-  };
-
-  const handleOutfitPress = (outfit: any) => {
-    const friend = mockFriends.find(f => f.id === outfit.userId);
-    if (friend) {
-      Alert.alert(
-        `${friend.name}'s OOTD`,
-        `Posted ${formatTimeAgo(outfit.createdAt)} ago\n${outfit.occasion ? `For: ${outfit.occasion}` : ''}\n${outfit.weather ? `Weather: ${outfit.weather}` : ''}`,
-        [{ text: 'Got it!' }]
-      );
-    }
+    Alert.alert(
+      `${user.name}'s OOTD`,
+      `Posted ${formatTimeAgo(ootd.createdAt)} ago\n${ootd.occasion ? `For: ${ootd.occasion}` : ''}\n${ootd.weather ? `Weather: ${ootd.weather}` : ''}`,
+      [{ text: 'Got it!' }]
+    );
   };
 
   const formatTimeAgo = (dateString: string) => {
@@ -93,7 +85,7 @@ export default function SocialScreen() {
   }, {} as Record<string, any[]>);
 
   // Sort users by most recent OOTD (including current user)
-  const allUsers = [currentUser, ...mockFriends];
+  const allUsers = [currentUserForDisplay];
   const sortedUsers = allUsers
     .filter(user => ootdsByUser[user.id]?.length > 0)
     .sort((a, b) => {
@@ -144,7 +136,8 @@ export default function SocialScreen() {
           <View style={styles.onlineIndicator}>
             <View style={styles.onlineDot} />
             <Text style={styles.onlineText}>
-              {[currentUser, ...mockFriends].filter(f => f.isOnline).length} users online
+              {[currentUserForDisplay].filter((f) => f.isOnline).length}{' '}
+              users online
             </Text>
           </View>
         </View>

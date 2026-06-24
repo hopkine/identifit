@@ -71,7 +71,7 @@ export default function PersonalStyleScreen() {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
-    router.push('/NAV');
+    router.push('/ONBOARDING/feature-overview');
   };
 
   const toggleStyle = (style: string) => {

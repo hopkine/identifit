@@ -27,8 +27,9 @@ import {
 
 const BG = '#121517';
 const SURFACE_SEARCH = '#1E2224';
-const SUBTITLE = '#87888B';
-const MONTH_BLUE = '#7AA4BC';
+/** Muted theme for secondary lines / placeholders */
+const THEME_MUTED = 'rgba(168, 179, 255, 0.55)';
+const THEME = LAYOUT.accentPurple;
 const CARD_CORNER = 14;
 const CARD_W = 168;
 const CARD_GAP = 14;
@@ -155,7 +156,7 @@ export default function StatsReportScreen() {
             accessibilityRole="button"
             accessibilityLabel="Back"
           >
-            <ChevronLeft size={26} color="#FFFFFF" strokeWidth={2} />
+            <ChevronLeft size={26} color={THEME} strokeWidth={2} />
           </TouchableOpacity>
 
           <View style={styles.headerTextBlock}>
@@ -165,11 +166,11 @@ export default function StatsReportScreen() {
         </View>
 
         <View style={styles.searchShell}>
-          <Search size={18} color={SUBTITLE} strokeWidth={2} />
+          <Search size={18} color={THEME} strokeWidth={2} />
           <TextInput
             style={styles.searchInput}
             placeholder="Search"
-            placeholderTextColor="rgba(135, 136, 139, 0.75)"
+            placeholderTextColor={THEME_MUTED}
             value={query}
             onChangeText={setQuery}
             returnKeyType="search"
@@ -260,19 +261,19 @@ const styles = StyleSheet.create({
   },
   title: {
     fontFamily: 'Caladea-Bold',
-    fontSize: 30,
-    color: '#FFFFFF',
-    letterSpacing: -0.6,
-    lineHeight: 36,
-    marginBottom: 6,
+    fontSize: 24,
+    color: THEME,
+    letterSpacing: -0.5,
+    lineHeight: 29,
+    marginBottom: 5,
   },
   subtitle: {
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '400',
-    color: SUBTITLE,
-    lineHeight: 21,
-    letterSpacing: 0.1,
+    color: THEME_MUTED,
+    lineHeight: 18,
+    letterSpacing: 0.08,
   },
   searchShell: {
     flexDirection: 'row',
@@ -288,8 +289,8 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
-    color: '#E8E9EA',
+    fontSize: 14,
+    color: THEME,
     paddingVertical: Platform.OS === 'android' ? 4 : 0,
   },
   yearSection: {
@@ -297,10 +298,10 @@ const styles = StyleSheet.create({
   },
   yearHeading: {
     fontFamily: 'Caladea-Regular',
-    fontSize: 22,
-    color: '#FFFFFF',
-    letterSpacing: -0.3,
-    marginBottom: 14,
+    fontSize: 18,
+    color: THEME,
+    letterSpacing: -0.25,
+    marginBottom: 12,
   },
   carouselRow: {
     gap: CARD_GAP,
@@ -336,31 +337,31 @@ const styles = StyleSheet.create({
   },
   wrapFooter: {
     paddingHorizontal: 12,
-    paddingTop: 10,
-    paddingBottom: 14,
+    paddingTop: 8,
+    paddingBottom: 12,
     backgroundColor: '#F7F7F5',
-    minHeight: 72,
+    minHeight: 64,
   },
   monthOnCard: {
     fontFamily: 'Caladea-Regular',
-    fontSize: 17,
-    color: MONTH_BLUE,
-    letterSpacing: -0.2,
+    fontSize: 15,
+    color: THEME,
+    letterSpacing: -0.18,
     marginBottom: 2,
   },
   titleOnCard: {
     fontFamily: 'Caladea-Bold',
-    fontSize: 15,
-    color: BG,
-    letterSpacing: -0.15,
-    lineHeight: 20,
+    fontSize: 13,
+    color: THEME,
+    letterSpacing: -0.12,
+    lineHeight: 18,
   },
   emptyHint: {
     marginTop: 24,
-    fontSize: 15,
-    color: SUBTITLE,
+    fontSize: 14,
+    color: THEME_MUTED,
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 20,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'sans-serif',
   },
 });

@@ -143,7 +143,7 @@ export default function FeatureOverview() {
     if (currentSlide < slides.length - 1) {
       setCurrentSlide(currentSlide + 1);
     } else {
-      router.push('/ONBOARDING/login');
+      router.push('/NAV');
     }
   };
 

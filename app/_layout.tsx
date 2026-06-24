@@ -30,9 +30,8 @@ export default function RootLayout() {
           name="style-overlay"
           options={{
             headerShown: false,
-            presentation: 'transparentModal',
-            animation: 'fade',
-            contentStyle: { backgroundColor: 'transparent' },
+            animation: 'slide_from_right',
+            contentStyle: { backgroundColor: '#000000' },
           }}
         />
         <Stack.Screen name="+not-found" options={{ headerShown: false }} />

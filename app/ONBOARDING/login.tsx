@@ -9,19 +9,63 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ChevronLeft } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import { onboardingScreenStyles as os } from '@/constants/onboardingScreens';
+import { appStorage } from '@/lib/appStorage';
+import { signInWithUsernamePassword } from '@/lib/authUsername';
+import { supabase } from '@/lib/supabase';
+import { CLOUD_USER_ID_STORAGE_KEY } from '@/lib/userCloudSync';
+import { useOOTD } from '@/hooks/useOOTD';
 
 export default function Login() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
+  const { refreshCloudProfile } = useOOTD();
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = () => {
-    router.push('/ONBOARDING/body-type');
+  const handleLogin = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const result = await signInWithUsernamePassword(username, password);
+      if (result.error) {
+        setError(result.error);
+        return;
+      }
+
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      const uid = session?.user?.id;
+      if (!uid) {
+        setError('Signed in but no session. Check Supabase Auth settings.');
+        return;
+      }
+
+      await appStorage.setItem(CLOUD_USER_ID_STORAGE_KEY, uid);
+      await refreshCloudProfile();
+      router.replace('/NAV' as Href);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSignUp = () => {
+    router.push({
+      pathname: '/ONBOARDING/username',
+      params: { signup: '1' },
+    });
+  };
+
+  const handleContinueWithoutSignIn = () => {
+    router.replace('/NAV' as Href);
   };
 
   return (
@@ -61,16 +105,16 @@ export default function Login() {
 
               <View style={styles.form}>
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Email</Text>
+                  <Text style={styles.label}>Username</Text>
                   <TextInput
                     style={styles.input}
-                    value={email}
-                    onChangeText={setEmail}
-                    placeholder="Enter your email"
+                    value={username}
+                    onChangeText={setUsername}
+                    placeholder="Enter your username"
                     placeholderTextColor="#9CA3AF"
-                    keyboardType="email-address"
                     autoCapitalize="none"
                     autoCorrect={false}
+                    editable={!loading}
                   />
                 </View>
 
@@ -84,21 +128,46 @@ export default function Login() {
                     placeholderTextColor="#9CA3AF"
                     secureTextEntry
                     autoCapitalize="none"
+                    editable={!loading}
                   />
                 </View>
 
+                {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
                 <TouchableOpacity
                   onPress={handleLogin}
-                  style={styles.signInButton}
+                  style={[styles.signInButton, loading && styles.signInButtonDisabled]}
                   activeOpacity={0.8}
+                  disabled={loading}
                 >
-                  <Text style={styles.signInButtonText}>Sign In</Text>
+                  {loading ? (
+                    <ActivityIndicator color="#000000" />
+                  ) : (
+                    <Text style={styles.signInButtonText}>Sign In</Text>
+                  )}
                 </TouchableOpacity>
 
                 <View style={styles.signUpContainer}>
-                  <TouchableOpacity onPress={() => {}} activeOpacity={0.7}>
+                  <TouchableOpacity
+                    onPress={handleSignUp}
+                    activeOpacity={0.7}
+                    disabled={loading}
+                  >
                     <Text style={styles.signUpText}>
                       Don&apos;t have an account? Sign up
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    onPress={handleContinueWithoutSignIn}
+                    activeOpacity={0.7}
+                    disabled={loading}
+                    style={styles.guestLink}
+                    accessibilityRole="button"
+                    accessibilityLabel="Try the app without signing in"
+                  >
+                    <Text style={styles.guestLinkText}>
+                      Try without signing in
                     </Text>
                   </TouchableOpacity>
                 </View>
@@ -182,6 +251,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
   },
+  errorText: {
+    color: '#FF6B6B',
+    fontSize: 14,
+    marginTop: -8,
+    marginBottom: 4,
+  },
   signInButton: {
     backgroundColor: '#FFFFFF',
     borderRadius: 6,
@@ -191,6 +266,9 @@ const styles = StyleSheet.create({
     height: 48,
     justifyContent: 'center',
   },
+  signInButtonDisabled: {
+    opacity: 0.7,
+  },
   signInButtonText: {
     color: '#000000',
     fontSize: 16,
@@ -198,10 +276,18 @@ const styles = StyleSheet.create({
   signUpContainer: {
     alignItems: 'center',
     marginTop: 8,
+    gap: 20,
   },
   signUpText: {
     color: '#9CA3AF',
     fontSize: 14,
   },
+  guestLink: {
+    paddingVertical: 4,
+  },
+  guestLinkText: {
+    color: '#C0D1FF',
+    fontSize: 15,
+    fontWeight: '500',
+  },
 });
-

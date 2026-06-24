@@ -6,8 +6,9 @@ import {
   Animated,
   Easing,
   Platform,
+  TouchableOpacity,
 } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, type Href } from 'expo-router';
 import {
   useFonts,
   Caladea_400Regular_Italic,
@@ -33,6 +34,7 @@ export default function Welcome() {
   const progressAnim = useRef(new Animated.Value(0)).current;
   const lastRoundedProgressRef = useRef(-1);
   const navigateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const progressListenerIdRef = useRef<string | undefined>(undefined);
 
   // Animated values
   const textOpacity = useRef(new Animated.Value(0)).current;
@@ -43,6 +45,19 @@ export default function Welcome() {
   // Avoid scale 0 with SVG (layout / first-frame jank); still invisible at opacity 0.
   const starScale = useRef(new Animated.Value(0.01)).current;
   const starFloat = useRef(new Animated.Value(0)).current;
+
+  const stopWelcomeProgressAndGo = (href: Href) => {
+    if (navigateTimeoutRef.current) {
+      clearTimeout(navigateTimeoutRef.current);
+      navigateTimeoutRef.current = null;
+    }
+    if (progressListenerIdRef.current) {
+      progressAnim.removeListener(progressListenerIdRef.current);
+      progressListenerIdRef.current = undefined;
+    }
+    progressAnim.stopAnimation();
+    router.replace(href);
+  };
 
   useEffect(() => {
     if (!fontsLoaded) return;
@@ -121,6 +136,7 @@ export default function Welcome() {
         setProgressLabel(rounded);
       }
     });
+    progressListenerIdRef.current = progressListenerId;
 
     Animated.timing(progressAnim, {
       toValue: 100,
@@ -128,17 +144,23 @@ export default function Welcome() {
       easing: Easing.inOut(Easing.cubic),
       useNativeDriver: false,
     }).start(({ finished }) => {
-      progressAnim.removeListener(progressListenerId);
+      if (progressListenerIdRef.current === progressListenerId) {
+        progressAnim.removeListener(progressListenerId);
+        progressListenerIdRef.current = undefined;
+      }
       if (finished) {
         setProgressLabel(100);
         navigateTimeoutRef.current = setTimeout(() => {
-          router.push('/ONBOARDING/feature-overview');
+          router.replace('/ONBOARDING/login' as Href);
         }, 500);
       }
     });
 
     return () => {
-      progressAnim.removeListener(progressListenerId);
+      if (progressListenerIdRef.current) {
+        progressAnim.removeListener(progressListenerIdRef.current);
+        progressListenerIdRef.current = undefined;
+      }
       progressAnim.stopAnimation();
       if (navigateTimeoutRef.current) clearTimeout(navigateTimeoutRef.current);
     };
@@ -198,6 +220,29 @@ export default function Welcome() {
 
         {/* Progress Bar */}
         <View style={styles.progressContainer}>
+          <View style={styles.welcomeSkipRow}>
+            <TouchableOpacity
+              onPress={() =>
+                stopWelcomeProgressAndGo('/ONBOARDING/login' as Href)
+              }
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Go to sign in"
+            >
+              <Text style={styles.welcomeSkipLink}>Sign in</Text>
+            </TouchableOpacity>
+            <Text style={styles.welcomeSkipSep}>·</Text>
+            <TouchableOpacity
+              onPress={() => stopWelcomeProgressAndGo('/NAV' as Href)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Try the app without signing in"
+            >
+              <Text style={styles.welcomeSkipLinkEmphasis}>
+                Try without signing in
+              </Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.progressBarBackground}>
             <Animated.View
               style={[
@@ -273,6 +318,29 @@ const styles = StyleSheet.create({
     bottom: 120,
     width: 280,
     alignItems: 'center',
+  },
+  welcomeSkipRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 18,
+    paddingHorizontal: 4,
+  },
+  welcomeSkipLink: {
+    color: 'rgba(255, 255, 255, 0.55)',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  welcomeSkipSep: {
+    color: 'rgba(255, 255, 255, 0.35)',
+    fontSize: 14,
+  },
+  welcomeSkipLinkEmphasis: {
+    color: '#C0D1FF',
+    fontSize: 14,
+    fontWeight: '600',
   },
   progressBarBackground: {
     width: '100%',

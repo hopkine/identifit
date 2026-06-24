@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Alert, Linking } from 'react-native';
-import { useCameraPermissions } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import * as MediaLibrary from 'expo-media-library';
 
 export type PermissionStatus = 'granted' | 'denied' | 'undetermined' | 'loading';
@@ -11,14 +11,27 @@ export interface PermissionState {
 }
 
 export function usePermissions() {
-  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
+  const [cameraPermission, setCameraPermission] = useState<PermissionStatus>('loading');
   const [galleryPermission, setGalleryPermission] = useState<PermissionStatus>('loading');
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Initialize gallery permission status
   useEffect(() => {
-    checkGalleryPermission();
+    void checkCameraPermission();
+    void checkGalleryPermission();
   }, []);
+
+  const checkCameraPermission = async () => {
+    try {
+      const { status } = await ImagePicker.getCameraPermissionsAsync();
+      setCameraPermission(
+        status === 'granted' ? 'granted' :
+        status === 'denied' ? 'denied' : 'undetermined'
+      );
+    } catch (error) {
+      console.error('Error checking camera permission:', error);
+      setCameraPermission('denied');
+    }
+  };
 
   const checkGalleryPermission = async () => {
     try {
@@ -37,19 +50,15 @@ export function usePermissions() {
 
   const requestCameraAccess = async (): Promise<boolean> => {
     try {
-      if (!cameraPermission) {
-        const permission = await requestCameraPermission();
-        return permission.granted;
-      }
+      setCameraPermission('loading');
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      const granted = status === 'granted';
 
-      if (!cameraPermission.granted) {
-        const permission = await requestCameraPermission();
-        return permission.granted;
-      }
-
-      return true;
+      setCameraPermission(granted ? 'granted' : 'denied');
+      return granted;
     } catch (error) {
       console.error('Error requesting camera permission:', error);
+      setCameraPermission('denied');
       return false;
     }
   };
@@ -95,13 +104,8 @@ export function usePermissions() {
   };
 
   const getPermissionState = (): PermissionState => {
-    const cameraStatus: PermissionStatus = 
-      !cameraPermission ? 'loading' :
-      cameraPermission.granted ? 'granted' :
-      cameraPermission.canAskAgain ? 'undetermined' : 'denied';
-
     return {
-      camera: cameraStatus,
+      camera: cameraPermission,
       gallery: galleryPermission,
     };
   };
@@ -138,6 +142,7 @@ export function usePermissions() {
     openAppSettings,
     
     // Refresh permission status
+    checkCameraPermission,
     checkGalleryPermission,
   };
 }
