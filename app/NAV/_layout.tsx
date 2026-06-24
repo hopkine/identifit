@@ -1,8 +1,9 @@
 import { Tabs } from 'expo-router';
 import { House, Compass, Star, Users } from 'lucide-react-native';
-import { LAYOUT } from '@/constants/layout';
+import { Platform } from 'react-native';
 import ProfileTabIcon from '@/components/ProfileTabIcon';
 import SavedTabIcon from '@/components/SavedTabIcon';
+import TabBarGlassBackground from '@/components/TabBarGlassBackground';
 
 export default function TabLayout() {
   return (
@@ -10,9 +11,12 @@ export default function TabLayout() {
       initialRouteName="home"
       screenOptions={{
         headerShown: false,
+        tabBarBackground: () => <TabBarGlassBackground />,
         tabBarStyle: {
-          backgroundColor: LAYOUT.navScreenBackground,
+          position: 'absolute',
+          backgroundColor: 'transparent',
           borderTopWidth: 0,
+          elevation: 0,
           height: 90,
           paddingBottom: 30,
           paddingTop: 10,
@@ -20,6 +24,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: '#C0D1FF',
         tabBarInactiveTintColor: '#6B7280',
         tabBarShowLabel: false,
+        ...(Platform.OS === 'ios' ? { tabBarTranslucent: true } : {}),
       }}>
       <Tabs.Screen
         name="saved"
