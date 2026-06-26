@@ -1,1 +1,1 @@
-export { default } from './_layout.web';
+export { default } from './_layout.ios';

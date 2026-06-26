@@ -7,6 +7,10 @@ dist/
 web-build/
 expo-env.d.ts
 
+# Portfolio web demo build output (regenerated via npm run demo:build)
+demo/app/*
+!demo/app/.gitkeep
+
 # native
 *.orig.*
 *.jks
