@@ -32,10 +32,10 @@ The app is available as a web experience so you can explore it without installin
 
 ## Tech stack
 
-Identifit is built with a modern React Native + Expo stack and tooling optimized for rapid iteration. 
+Identifit targets **iOS** (native app) and **web** (portfolio demo). Android is not supported.
 
-- **Framework:** React Native, React Native Web   
-- **App runtime:** Expo   
+- **Framework:** React Native, React Native Web
+- **App runtime:** Expo (SDK 54, iOS + web)
 - **Language:** TypeScript   
 - **Backend / data:** Supabase   
 - **Routing:** expo-router   
@@ -68,8 +68,8 @@ Identifit is built with a modern React Native + Expo stack and tooling optimized
 
 4. **Open on device or web**
 
-   - Scan the QR code with the Expo Go app (iOS/Android), or  
-   - Press `w` in the Expo CLI to open the web version in your browser.
+   - **iOS:** Run a dev client or EAS build on an iPhone (`npm run eas:build:preview:ios`). Native features (liquid glass tabs, page sheets) require iOS 26+.
+   - **Web:** Press `w` in the Expo CLI, or use `npm run demo:serve` for the portfolio demo.
 
 If you use Supabase or other APIs, create a `.env` file and add your environment variables, then ensure they’re loaded via Expo config.
 
