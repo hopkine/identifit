@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { House, Compass, Star, Users } from 'lucide-react-native';
+import { House, Compass, Star } from 'lucide-react-native';
 import { LAYOUT } from '@/constants/layout';
 import ProfileTabIcon from '@/components/ProfileTabIcon';
 import SavedTabIcon from '@/components/SavedTabIcon';
@@ -65,24 +65,6 @@ export default function NavJsTabsLayout() {
         name="index"
         options={{
           href: null,
-        }}
-      />
-      <Tabs.Screen
-        name="links"
-        options={{
-          href: null,
-          tabBarIcon: ({ size, color }) => (
-            <House size={size} color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
-        name="social"
-        options={{
-          href: null,
-          tabBarIcon: ({ size, color }) => (
-            <Users size={size} color={color} />
-          ),
         }}
       />
     </Tabs>

@@ -6,8 +6,6 @@ import {
   Image,
   TouchableOpacity,
   ScrollView,
-  Modal,
-  SafeAreaView,
   Platform,
   useWindowDimensions,
 } from 'react-native';
@@ -22,6 +20,7 @@ import {
   type StatsClosetItem,
 } from '@/constants/statsClosetItems';
 import RecreateClosetSheetContent from '@/components/RecreateClosetSheetContent';
+import NativePageSheet from '@/components/NativePageSheet';
 import { useOOTD } from '@/hooks/useOOTD';
 import type { OOTD } from '@/types/ootd';
 
@@ -214,13 +213,11 @@ export default function StyleOverlayScreen() {
         {useNativeClosetSheet ? (
           <>
             {hero}
-            <Modal
+            <NativePageSheet
               visible={closetSheetVisible}
-              animationType="slide"
-              presentationStyle="pageSheet"
-              onRequestClose={closeClosetSheet}>
-              <SafeAreaView style={styles.nativeSheetContainer}>{closetSheet}</SafeAreaView>
-            </Modal>
+              onClose={closeClosetSheet}>
+              {closetSheet}
+            </NativePageSheet>
           </>
         ) : (
           <>
@@ -339,10 +336,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     color: '#111827',
     letterSpacing: 0.1,
-  },
-  nativeSheetContainer: {
-    flex: 1,
-    backgroundColor: '#1c1c1e',
   },
   sheetScroll: {
     flex: 1,

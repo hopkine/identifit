@@ -1,6 +1,6 @@
-import { Modal, SafeAreaView, StyleSheet } from 'react-native';
 import { useFonts, Caladea_700Bold } from '@expo-google-fonts/caladea';
 import FilterSortSheetContent from '@/components/FilterSortSheetContent';
+import NativePageSheet from '@/components/NativePageSheet';
 import type { FilterSortSheetProps } from '@/components/FilterSortSheet.types';
 import { useFilterSortSheetState } from '@/components/useFilterSortSheetState';
 
@@ -26,28 +26,15 @@ export default function FilterSortSheet({
   }
 
   return (
-    <Modal
-      visible={visible}
-      animationType="slide"
-      presentationStyle="pageSheet"
-      onRequestClose={onClose}>
-      <SafeAreaView style={styles.container}>
-        <FilterSortSheetContent
-          filters={filters}
-          onUpdateFilter={updateFilter}
-          onReset={handleReset}
-          onApply={handleApply}
-          itemCountDefault={itemCountDefault}
-          itemCountNearMe={itemCountNearMe}
-        />
-      </SafeAreaView>
-    </Modal>
+    <NativePageSheet visible={visible} onClose={onClose}>
+      <FilterSortSheetContent
+        filters={filters}
+        onUpdateFilter={updateFilter}
+        onReset={handleReset}
+        onApply={handleApply}
+        itemCountDefault={itemCountDefault}
+        itemCountNearMe={itemCountNearMe}
+      />
+    </NativePageSheet>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000000',
-  },
-});
