@@ -6,8 +6,9 @@ import {
   Image,
   TouchableOpacity,
   ScrollView,
-  FlatList,
-  type ImageSourcePropType,
+  Modal,
+  SafeAreaView,
+  Platform,
   useWindowDimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -20,6 +21,7 @@ import {
   type ClosetCategory,
   type StatsClosetItem,
 } from '@/constants/statsClosetItems';
+import RecreateClosetSheetContent from '@/components/RecreateClosetSheetContent';
 import { useOOTD } from '@/hooks/useOOTD';
 import type { OOTD } from '@/types/ootd';
 
@@ -45,10 +47,6 @@ const inspirationImages = {
 } as const;
 
 const CATEGORIES: Category[] = ['Tops', 'Bottoms', 'Shoes', 'Accessories'];
-
-const CAROUSEL_CARD_WIDTH = 128;
-const CAROUSEL_GAP = 14;
-const CAROUSEL_SNAP_INTERVAL = CAROUSEL_CARD_WIDTH + CAROUSEL_GAP;
 
 function clampIndex(raw: unknown, maxExclusive: number) {
   const n = Number(raw);
@@ -97,15 +95,11 @@ export default function StyleOverlayScreen() {
       return headerImages[0];
     }
     return headerImages[headerIndex];
-  }, [
-    ootdFromFriend,
-    headerImages,
-    headerIndex,
-    params.ootdId,
-  ]);
+  }, [ootdFromFriend, headerImages, headerIndex, params.ootdId]);
 
   const [category, setCategory] = React.useState<Category>('Tops');
   const [carouselIndex, setCarouselIndex] = React.useState(0);
+  const [closetSheetVisible, setClosetSheetVisible] = React.useState(true);
   const [selectedByCategory, setSelectedByCategory] = React.useState<
     Record<Category, ClosetItem[]>
   >({
@@ -116,7 +110,7 @@ export default function StyleOverlayScreen() {
   });
 
   const suggestions = React.useMemo(
-    () => STATS_CLOSET_PLACEHOLDERS.filter((x) => x.category === category),
+    () => STATS_CLOSET_PLACEHOLDERS.filter((item) => item.category === category),
     [category]
   );
 
@@ -127,11 +121,9 @@ export default function StyleOverlayScreen() {
   const contentWidth = Math.min(windowWidth, constrainedWidth);
   const sheetWidth = contentWidth - LAYOUT.paddingHorizontal * 2;
   const sheetRadius = 26;
-
   const headerHeight = Math.min(400, Math.max(300, Math.round(windowHeight * 0.44)));
-
   const selected = selectedByCategory[category];
-  const selectedSlots = 5;
+  const useNativeClosetSheet = Platform.OS === 'ios';
 
   if (!fontsLoaded) {
     return null;
@@ -140,14 +132,14 @@ export default function StyleOverlayScreen() {
   const toggleSelect = (item: ClosetItem) => {
     setSelectedByCategory((prev) => {
       const existing = prev[category];
-      const already = existing.some((x) => x.id === item.id);
+      const already = existing.some((entry) => entry.id === item.id);
       if (already) {
         return {
           ...prev,
-          [category]: existing.filter((x) => x.id !== item.id),
+          [category]: existing.filter((entry) => entry.id !== item.id),
         };
       }
-      if (existing.length >= selectedSlots) return prev;
+      if (existing.length >= 5) return prev;
       return {
         ...prev,
         [category]: [...existing, item],
@@ -155,172 +147,107 @@ export default function StyleOverlayScreen() {
     });
   };
 
-  const renderDot = (active: boolean) => (
-    <View style={[styles.dot, active && styles.dotActive]} />
+  const closeClosetSheet = () => {
+    setClosetSheetVisible(false);
+    router.back();
+  };
+
+  const closetSheet = (
+    <RecreateClosetSheetContent
+      suggestions={suggestions}
+      selected={selected}
+      carouselIndex={carouselIndex}
+      onCarouselIndexChange={setCarouselIndex}
+      onToggleSelect={toggleSelect}
+    />
+  );
+
+  const hero = (
+    <View style={[styles.header, useNativeClosetSheet ? styles.headerFullScreen : { height: headerHeight }]}>
+      <Image source={headerImage} style={styles.headerImage} />
+      <View style={[styles.headerTopRow, { paddingTop: Math.max(insets.top, 12) }]}>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.iconButton}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          activeOpacity={0.85}
+          accessibilityLabel="Back">
+          <ChevronLeft size={26} color="#FFFFFF" strokeWidth={2.6} />
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => {}} style={styles.createButton} activeOpacity={0.85}>
+          <Text style={styles.createButtonText}>Create</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.headerCategoryOverlay} pointerEvents="box-none">
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.categoryRowOnPhoto}>
+          {CATEGORIES.map((entry) => {
+            const active = entry === category;
+            return (
+              <TouchableOpacity
+                key={entry}
+                onPress={() => setCategory(entry)}
+                style={[styles.categoryPillOnPhoto, active && styles.categoryPillOnPhotoActive]}
+                activeOpacity={0.85}>
+                <Text
+                  style={[styles.categoryTextOnPhoto, active && styles.categoryTextOnPhotoActive]}
+                  numberOfLines={1}>
+                  {entry}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      </View>
+    </View>
   );
 
   return (
     <View style={styles.backdrop}>
       <View style={[styles.stage, { width: contentWidth }]}>
-        <View style={[styles.header, { height: headerHeight }]}>
-          <Image source={headerImage} style={styles.headerImage} />
-          <View style={[styles.headerTopRow, { paddingTop: Math.max(insets.top, 12) }]}>
-            <TouchableOpacity
-              onPress={() => router.back()}
-              style={styles.iconButton}
-              hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-              activeOpacity={0.85}
-              accessibilityLabel="Back"
-            >
-              <ChevronLeft size={26} color="#FFFFFF" strokeWidth={2.6} />
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              onPress={() => {}}
-              style={styles.createButton}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.createButtonText}>Create</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.headerCategoryOverlay} pointerEvents="box-none">
+        {useNativeClosetSheet ? (
+          <>
+            {hero}
+            <Modal
+              visible={closetSheetVisible}
+              animationType="slide"
+              presentationStyle="pageSheet"
+              onRequestClose={closeClosetSheet}>
+              <SafeAreaView style={styles.nativeSheetContainer}>{closetSheet}</SafeAreaView>
+            </Modal>
+          </>
+        ) : (
+          <>
+            {hero}
             <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
+              style={styles.sheetScroll}
+              contentContainerStyle={[
+                styles.sheetScrollContent,
+                { paddingBottom: Math.max(insets.bottom, 16) + 12 },
+              ]}
+              showsVerticalScrollIndicator={false}
               nestedScrollEnabled
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={styles.categoryRowOnPhoto}
-            >
-              {CATEGORIES.map((c) => {
-                const active = c === category;
-                return (
-                  <TouchableOpacity
-                    key={c}
-                    onPress={() => setCategory(c)}
-                    style={[styles.categoryPillOnPhoto, active && styles.categoryPillOnPhotoActive]}
-                    activeOpacity={0.85}
-                  >
-                    <Text
-                      style={[styles.categoryTextOnPhoto, active && styles.categoryTextOnPhotoActive]}
-                      numberOfLines={1}
-                    >
-                      {c}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </View>
-        </View>
-
-        <ScrollView
-          style={styles.sheetScroll}
-          contentContainerStyle={[
-            styles.sheetScrollContent,
-            { paddingBottom: Math.max(insets.bottom, 16) + 12 },
-          ]}
-          showsVerticalScrollIndicator={false}
-          nestedScrollEnabled
-          keyboardShouldPersistTaps="handled"
-        >
-          <View
-            style={[
-              styles.sheet,
-              {
-                width: sheetWidth,
-                borderTopLeftRadius: sheetRadius,
-                borderTopRightRadius: sheetRadius,
-              },
-            ]}
-          >
-            <View style={styles.sheetTitleRow}>
-              <Text style={styles.sheetTitle}>Recreate using </Text>
-              <Text style={styles.sheetTitleEmph}>your closet</Text>
-            </View>
-
-            <View style={styles.carouselWrap}>
-              <FlatList
-                data={suggestions}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                nestedScrollEnabled
-                keyExtractor={(item) => item.id}
-                contentContainerStyle={styles.carouselContent}
-                snapToInterval={CAROUSEL_SNAP_INTERVAL}
-                snapToAlignment="start"
-                decelerationRate="fast"
-                ItemSeparatorComponent={() => <View style={{ width: CAROUSEL_GAP }} />}
-                onScroll={(e) => {
-                  const x = e.nativeEvent.contentOffset.x;
-                  const next = Math.round(x / CAROUSEL_SNAP_INTERVAL);
-                  setCarouselIndex(
-                    Math.max(0, Math.min(suggestions.length - 1, next))
-                  );
-                }}
-                scrollEventThrottle={16}
-                onMomentumScrollEnd={(e) => {
-                  const x = e.nativeEvent.contentOffset.x;
-                  const next = Math.round(x / CAROUSEL_SNAP_INTERVAL);
-                  setCarouselIndex(
-                    Math.max(0, Math.min(suggestions.length - 1, next))
-                  );
-                }}
-                renderItem={({ item }) => {
-                  const isSelected = selected.some((x) => x.id === item.id);
-                  return (
-                    <TouchableOpacity
-                      style={[
-                        styles.carouselCard,
-                        isSelected && styles.carouselCardSelected,
-                      ]}
-                      activeOpacity={0.88}
-                      onPress={() => toggleSelect(item)}
-                    >
-                      <Image
-                        source={item.image}
-                        style={styles.carouselImage}
-                        resizeMode="contain"
-                      />
-                    </TouchableOpacity>
-                  );
-                }}
-              />
-
-              <View style={styles.dotsRow} pointerEvents="none">
-                {suggestions.map((_, idx) => (
-                  <React.Fragment key={idx}>
-                    {renderDot(idx === carouselIndex)}
-                  </React.Fragment>
-                ))}
+              keyboardShouldPersistTaps="handled">
+              <View
+                style={[
+                  styles.inlineSheet,
+                  {
+                    width: sheetWidth,
+                    borderTopLeftRadius: sheetRadius,
+                    borderTopRightRadius: sheetRadius,
+                  },
+                ]}>
+                {closetSheet}
               </View>
-            </View>
-
-            <Text style={styles.selectedTitle}>Selected Items</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              nestedScrollEnabled
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={styles.selectedRowScroll}
-            >
-              {Array.from({ length: selectedSlots }).map((_, i) => {
-                const item = selected[i];
-                return (
-                  <View key={i} style={styles.selectedSlot}>
-                    {item ? (
-                      <Image
-                        source={item.image}
-                        style={styles.selectedSlotImage}
-                        resizeMode="contain"
-                      />
-                    ) : null}
-                  </View>
-                );
-              })}
             </ScrollView>
-          </View>
-        </ScrollView>
+          </>
+        )}
       </View>
     </View>
   );
@@ -340,6 +267,9 @@ const styles = StyleSheet.create({
   header: {
     width: '100%',
     overflow: 'hidden',
+  },
+  headerFullScreen: {
+    flex: 1,
   },
   headerImage: {
     position: 'absolute',
@@ -410,109 +340,23 @@ const styles = StyleSheet.create({
     color: '#111827',
     letterSpacing: 0.1,
   },
+  nativeSheetContainer: {
+    flex: 1,
+    backgroundColor: '#1c1c1e',
+  },
   sheetScroll: {
     flex: 1,
   },
   sheetScrollContent: {
     flexGrow: 1,
   },
-  sheet: {
+  inlineSheet: {
     alignSelf: 'center',
     marginTop: 20,
-    backgroundColor: '#1c1c1e',
-    paddingTop: 22,
-    paddingHorizontal: 18,
-    paddingBottom: 22,
+    overflow: 'hidden',
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
   },
-  sheetTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    flexWrap: 'wrap',
-    marginBottom: 16,
-  },
-  sheetTitle: {
-    fontSize: 22,
-    fontFamily: 'Caladea-Bold',
-    color: '#FFFFFF',
-    letterSpacing: -0.3,
-  },
-  sheetTitleEmph: {
-    fontSize: 22,
-    fontFamily: 'Caladea-Bold',
-    fontStyle: 'italic',
-    color: '#A8B3FF',
-    letterSpacing: -0.3,
-  },
-  carouselWrap: {
-    marginBottom: 14,
-  },
-  carouselContent: {
-    paddingVertical: 4,
-    paddingRight: 18,
-  },
-  carouselCard: {
-    width: CAROUSEL_CARD_WIDTH,
-    height: 128,
-    borderRadius: 16,
-    overflow: 'hidden',
-    backgroundColor: '#2c2c2e',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
-  },
-  carouselCardSelected: {
-    borderColor: '#A8B3FF',
-    borderWidth: 2,
-  },
-  carouselImage: {
-    width: '100%',
-    height: '100%',
-  },
-  dotsRow: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 10,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-  },
-  dotActive: {
-    backgroundColor: 'rgba(255,255,255,0.75)',
-  },
-  selectedTitle: {
-    fontSize: 17,
-    fontFamily: 'Caladea-Bold',
-    color: '#FFFFFF',
-    marginTop: 4,
-    marginBottom: 12,
-    letterSpacing: -0.2,
-  },
-  selectedRowScroll: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingRight: 4,
-  },
-  selectedSlot: {
-    width: 64,
-    height: 58,
-    borderRadius: 12,
-    backgroundColor: '#2a2a2c',
-    borderWidth: 1,
-    borderColor: 'rgba(168,179,255,0.35)',
-    overflow: 'hidden',
-  },
-  selectedSlotImage: {
-    width: '100%',
-    height: '100%',
-  },
 });
-
